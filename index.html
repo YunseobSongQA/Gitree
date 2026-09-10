@@ -1,0 +1,1344 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>안 웃기 챌린지 · Don't Laugh Challenge</title>
+<meta name="theme-color" content="#0B1F1D">
+<meta name="description" content="웹캠으로 웃음을 감지하는 안 웃기 챌린지. 버틴 시간을 재고 무너지는 순간을 9:16 영상으로 남깁니다.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+:root{
+  --deep:#0B1F1D;
+  --panel:#12302C;
+  --line:#1E4740;
+  --amber:#FFB020;
+  --red:#FF3B2F;
+  --cream:#F5EEDD;
+  --muted:#7A9490;
+  --st:env(safe-area-inset-top,0px);
+  --sb:env(safe-area-inset-bottom,0px);
+  --sl:env(safe-area-inset-left,0px);
+  --sr:env(safe-area-inset-right,0px);
+  color-scheme:dark;
+}
+html,body{margin:0;padding:0;height:100%}
+body{
+  background:var(--deep);
+  color:var(--cream);
+  font-family:"Noto Sans KR",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  overscroll-behavior:none;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
+button{font-family:inherit;color:inherit;cursor:pointer;border:0;background:none}
+
+/* ---------- screens ---------- */
+.screen{position:fixed;inset:0;height:100dvh;display:none;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.screen.on{display:block}
+.wrap{
+  min-height:100dvh;display:flex;flex-direction:column;justify-content:center;
+  gap:20px;max-width:600px;margin:0 auto;
+  padding:calc(var(--st) + 30px) calc(var(--sr) + 22px) calc(var(--sb) + 30px) calc(var(--sl) + 22px);
+}
+
+/* ---------- start ---------- */
+.lang{
+  position:absolute;top:calc(var(--st) + 14px);right:calc(var(--sr) + 16px);
+  border:1px solid var(--line);background:rgba(18,48,44,.7);
+  color:var(--muted);font-size:12px;font-weight:700;letter-spacing:.08em;
+  padding:8px 13px;border-radius:999px;z-index:5;
+}
+.lang:hover{color:var(--cream);border-color:var(--amber)}
+.kicker{
+  font-size:12px;font-weight:700;letter-spacing:.22em;color:var(--amber);
+  text-transform:uppercase;margin-bottom:12px;
+}
+.title{
+  font-family:"Black Han Sans",sans-serif;font-weight:400;
+  font-size:clamp(52px,16vw,88px);line-height:.92;letter-spacing:-.01em;
+  margin:0 0 16px;color:var(--cream);
+}
+.title em{font-style:normal;color:var(--amber)}
+.lead{margin:0;font-size:15px;line-height:1.72;color:var(--muted);max-width:36ch}
+.lead b{color:var(--cream);font-weight:700}
+
+.tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:4px}
+.tier{
+  display:flex;flex-direction:column;gap:6px;align-items:flex-start;
+  border:1.5px solid var(--line);background:var(--panel);
+  border-radius:15px;padding:14px 12px 13px;text-align:left;
+  transition:border-color .15s,background .15s,transform .1s;
+}
+.tier:active{transform:scale(.975)}
+.tier .tn{font-family:"Black Han Sans",sans-serif;font-size:20px;line-height:1;color:var(--cream)}
+.tier .td{font-size:11px;line-height:1.45;color:var(--muted);word-break:keep-all}
+.tier .tv{
+  font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--muted);
+  border:1px solid var(--line);border-radius:6px;padding:2px 6px;margin-top:auto;
+}
+.tier[aria-pressed="true"]{border-color:var(--amber);background:rgba(255,176,32,.11)}
+.tier[aria-pressed="true"] .tn{color:var(--amber)}
+.tier[aria-pressed="true"] .tv{color:var(--amber);border-color:rgba(255,176,32,.5)}
+
+.cta{
+  display:block;width:100%;background:var(--amber);color:#0B1F1D;
+  font-family:"Black Han Sans",sans-serif;font-size:24px;line-height:1;
+  padding:21px 20px;border-radius:17px;
+  box-shadow:0 10px 0 -2px rgba(255,176,32,.22);
+  transition:transform .1s,opacity .15s;
+}
+.cta:active{transform:translateY(2px)}
+.cta[disabled]{opacity:.45;cursor:default;transform:none}
+.ghost{
+  border:1.5px solid var(--line);background:var(--panel);color:var(--cream);
+  font-size:14px;font-weight:700;padding:15px 12px;border-radius:14px;
+  transition:border-color .15s,transform .1s;
+}
+.ghost:active{transform:scale(.975)}
+.ghost:hover{border-color:var(--amber)}
+
+.note{margin:0;font-size:12.5px;line-height:1.6;color:var(--muted);min-height:1.6em}
+.note.warn{color:var(--red);font-weight:700}
+.tiny{margin:0;font-size:11px;line-height:1.6;color:rgba(122,148,144,.7)}
+
+/* ---------- game ---------- */
+#scr-game{background:var(--deep)}
+.stagewrap{
+  position:fixed;inset:0;display:grid;place-items:center;background:var(--deep);
+  padding:var(--st) var(--sr) var(--sb) var(--sl);
+}
+#stage{
+  display:block;aspect-ratio:9/16;height:100%;width:auto;
+  max-width:100%;max-height:100%;background:var(--deep);
+}
+
+/* ---------- result ---------- */
+.rescard{
+  border:1.5px solid var(--line);background:var(--panel);
+  border-radius:20px;padding:20px 20px 18px;text-align:center;
+}
+.reslabel{font-size:11px;font-weight:700;letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
+.restime{
+  font-family:"Black Han Sans",sans-serif;line-height:.95;color:var(--amber);
+  font-size:clamp(58px,19vw,96px);margin:8px 0 4px;
+}
+.restime em{font-style:normal;font-size:.34em;color:var(--cream);margin-left:.12em}
+.resgrade{font-family:"Black Han Sans",sans-serif;font-size:22px;line-height:1.3;color:var(--cream);word-break:keep-all}
+.resmeta{margin-top:9px;font-size:11.5px;letter-spacing:.06em;color:var(--muted)}
+.vidwrap{display:grid;place-items:center}
+#resVideo{
+  width:auto;height:auto;max-height:46dvh;max-width:100%;aspect-ratio:9/16;
+  border-radius:16px;background:var(--deep);border:1.5px solid var(--line);display:block;
+}
+.vidmiss{
+  display:grid;place-items:center;text-align:center;padding:26px 18px;
+  border:1.5px dashed var(--line);border-radius:16px;color:var(--muted);font-size:13px;line-height:1.6;
+}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.btns .cta{grid-column:1 / -1}
+
+/* ---------- hidden cam ---------- */
+#cam{position:fixed;left:-12px;top:-12px;width:4px;height:4px;opacity:.001;pointer-events:none;z-index:-1}
+</style>
+</head>
+<body>
+
+<video id="cam" playsinline muted autoplay></video>
+
+<!-- ================= START ================= -->
+<section id="scr-start" class="screen on">
+  <button id="langBtn" class="lang" type="button">EN</button>
+  <div class="wrap">
+    <header>
+      <div class="kicker" data-i="kicker"></div>
+      <h1 class="title" data-ih="title"></h1>
+      <p class="lead" data-ih="lead"></p>
+    </header>
+    <div class="tiers" id="tiers">
+      <button class="tier" type="button" data-diff="easy" aria-pressed="false">
+        <span class="tn" data-i="t_easy"></span><span class="td" data-i="t_easy_d"></span><span class="tv">0.30</span>
+      </button>
+      <button class="tier" type="button" data-diff="normal" aria-pressed="true">
+        <span class="tn" data-i="t_normal"></span><span class="td" data-i="t_normal_d"></span><span class="tv">0.19</span>
+      </button>
+      <button class="tier" type="button" data-diff="hard" aria-pressed="false">
+        <span class="tn" data-i="t_hard"></span><span class="td" data-i="t_hard_d"></span><span class="tv">0.11</span>
+      </button>
+    </div>
+    <button id="startBtn" class="cta" type="button" data-i="start"></button>
+    <p class="note" id="startNote"></p>
+    <p class="tiny" data-i="privacy"></p>
+  </div>
+</section>
+
+<!-- ================= GAME ================= -->
+<section id="scr-game" class="screen">
+  <div class="stagewrap"><canvas id="stage" width="720" height="1280"></canvas></div>
+</section>
+
+<!-- ================= RESULT ================= -->
+<section id="scr-result" class="screen">
+  <div class="wrap">
+    <div class="rescard">
+      <div class="reslabel" data-i="lasted"></div>
+      <div class="restime"><span id="resTime">0.0</span><em data-i="sec"></em></div>
+      <div class="resgrade" id="resGrade"></div>
+      <div class="resmeta" id="resMeta"></div>
+    </div>
+    <div class="vidwrap" id="vidWrap">
+      <video id="resVideo" playsinline controls loop></video>
+    </div>
+    <div class="btns">
+      <button id="shareBtn" class="cta" type="button" data-i="share"></button>
+      <button id="saveBtn" class="ghost" type="button" data-i="save"></button>
+      <button id="againBtn" class="ghost" type="button" data-i="again"></button>
+      <button id="homeBtn" class="ghost" type="button" data-i="home" style="grid-column:1 / -1"></button>
+    </div>
+    <p class="note" id="resNote"></p>
+  </div>
+</section>
+
+<script type="module">
+import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+
+/* ============================================================
+   0. i18n
+   ============================================================ */
+const STR = {
+  ko:{
+    kicker:"웹캠 웃음 감지",
+    title:'안 웃기<br><em>챌린지</em>',
+    lead:'카메라가 당신의 <b>입꼬리</b>를 봅니다.<br>웃으면 그 즉시 끝. 버틴 시간을 재고, <b>무너지는 순간</b>을 9:16 영상으로 남겨 드립니다.',
+    t_easy:"봐줌", t_easy_d:"웬만해선 안 걸림", 
+    t_normal:"보통", t_normal_d:"적당히 빡셈",
+    t_hard:"빡셈", t_hard_d:"입꼬리만 올려도 아웃",
+    start:"시작하기", loadingModel:"얼굴 인식 모델 불러오는 중…", asking:"카메라 권한 확인 중…",
+    privacy:"카메라·마이크 권한이 필요합니다. 영상은 전부 이 기기 안에서만 처리되고 어디로도 전송되지 않습니다.",
+    ready:"3초 카운트다운 동안 평소 표정을 재서 기준을 잡습니다.",
+    err_denied:"카메라 권한이 거부되었습니다. 브라우저 주소창의 자물쇠 아이콘에서 권한을 허용한 뒤 다시 시도해 주세요.",
+    err_nodev:"사용할 수 있는 카메라를 찾지 못했습니다.",
+    err_busy:"다른 앱이 카메라를 쓰고 있습니다. 종료 후 다시 시도해 주세요.",
+    err_model:"얼굴 인식 모델을 불러오지 못했습니다. 네트워크를 확인하고 새로고침해 주세요.",
+    err_generic:"카메라를 시작하지 못했습니다: ",
+    cd_hold:"얼굴을 화면 안에 두고 평소 표정을 유지하세요",
+    cd_noface:"얼굴이 화면에 없습니다",
+    cd_calib:"기준 표정 측정 중",
+    cd_go:"시작!",
+    fail:"실패", failEsc:"도망",
+    escNote:"카메라에서 도망갔습니다",
+    lasted:"버틴 시간", sec:"초", secShort:"초",
+    share:"공유하기", save:"영상 저장", again:"다시 하기", home:"처음으로",
+    shareTitle:"안 웃기 챌린지",
+    shareText:s=>`안 웃기 챌린지 ${s}초 버팀 😐 #안웃기챌린지`,
+    wm:"#안웃기챌린지",
+    r_laugh:"웃음 감지", r_escape:"도망 실격",
+    saved:"영상을 저장했습니다.",
+    shareUnsupported:"이 브라우저는 파일 공유를 지원하지 않아 저장으로 대신했습니다.",
+    shareErr:"공유하지 못했습니다. ‘영상 저장’을 눌러 주세요.",
+    noRec:"이 브라우저에서는 화면 녹화를 지원하지 않아 영상이 저장되지 않았습니다.",
+    grades:[
+      {t:2,   s:"0초컷. 시작도 안 했는데요"},
+      {t:5,   s:"간지럼 많이 타시는군요"},
+      {t:10,  s:"지극히 인간적인 웃음보"},
+      {t:20,  s:"제법 버텼습니다"},
+      {t:35,  s:"포커페이스 견습생"},
+      {t:60,  s:"표정 근육의 지배자"},
+      {t:120, s:"무표정 장인"},
+      {t:Infinity, s:"혹시… 사람 맞으세요?"}
+    ],
+    escGrade:"도망은 반칙입니다"
+  },
+  en:{
+    kicker:"WEBCAM SMILE DETECTION",
+    title:"DON'T<br><em>LAUGH</em>",
+    lead:'The camera is watching your <b>mouth corners</b>.<br>Smile and it is over. We time how long you last and hand you the <b>moment you broke</b> as a 9:16 clip.',
+    t_easy:"EASY", t_easy_d:"Hard to trip up",
+    t_normal:"NORMAL", t_normal_d:"Fairly strict",
+    t_hard:"BRUTAL", t_hard_d:"A twitch ends it",
+    start:"START", loadingModel:"Loading face model…", asking:"Requesting camera…",
+    privacy:"Camera and microphone access is required. Everything is processed on this device and nothing is uploaded.",
+    ready:"The 3s countdown measures your resting face to set a baseline.",
+    err_denied:"Camera permission was denied. Allow it from the lock icon in the address bar and try again.",
+    err_nodev:"No usable camera was found.",
+    err_busy:"Another app is using the camera. Close it and try again.",
+    err_model:"Could not load the face model. Check your connection and reload.",
+    err_generic:"Could not start the camera: ",
+    cd_hold:"Keep your face in frame with a resting expression",
+    cd_noface:"No face in frame",
+    cd_calib:"Measuring your baseline",
+    cd_go:"GO!",
+    fail:"FAILED", failEsc:"ESCAPED",
+    escNote:"You hid from the camera",
+    lasted:"YOU LASTED", sec:"s", secShort:"s",
+    share:"SHARE", save:"SAVE VIDEO", again:"PLAY AGAIN", home:"HOME",
+    shareTitle:"Don't Laugh Challenge",
+    shareText:s=>`I lasted ${s}s without laughing 😐 #DontLaughChallenge`,
+    wm:"#DontLaughChallenge",
+    r_laugh:"Smile detected", r_escape:"Disqualified",
+    saved:"Video saved.",
+    shareUnsupported:"This browser cannot share files, so it was saved instead.",
+    shareErr:"Sharing failed. Use “Save video” instead.",
+    noRec:"This browser does not support canvas recording, so no clip was saved.",
+    grades:[
+      {t:2,   s:"Instant collapse."},
+      {t:5,   s:"Ticklish, aren't we."},
+      {t:10,  s:"Perfectly, boringly human."},
+      {t:20,  s:"Not bad at all."},
+      {t:35,  s:"Poker face trainee."},
+      {t:60,  s:"Master of the face muscles."},
+      {t:120, s:"Certified stone face."},
+      {t:Infinity, s:"Are you even human?"}
+    ],
+    escGrade:"Hiding is cheating."
+  }
+};
+let LANG = (navigator.language||"ko").toLowerCase().startsWith("ko") ? "ko" : "en";
+const T = k => STR[LANG][k];
+
+/* ============================================================
+   1. constants / refs
+   ============================================================ */
+const W=720, H=1280;           // 캔버스 9:16
+const SR_H=560;                // 0~560   자극 영역
+const CAM_Y=560, CAM_S=720;    // 560~1280 카메라 영역(720x720)
+const BAR_H=16;                // 하단 긴장도 바
+
+const C = { deep:"#0B1F1D", panel:"#12302C", line:"#1E4740",
+            amber:"#FFB020", red:"#FF3B2F", cream:"#F5EEDD", muted:"#7A9490" };
+
+const SENS = { easy:0.30, normal:0.19, hard:0.11 };
+const HOLD_MS      = 110;   // 판정 지속 시간
+const CD_MS        = 3000;  // 카운트다운
+const CD_NOFACE_MS = 800;   // 카운트다운 중 얼굴 실종 허용
+const PLAY_NOFACE_MS = 1300;// 게임 중 얼굴 실종 허용(도망)
+const FAIL_MS      = 1700;  // 실패 연출 길이
+const MIN_SAMPLES  = 12;    // base 중앙값에 필요한 최소 샘플
+
+const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Twemoji Mozilla","EmojiOne Color",sans-serif';
+const HEAD = '"Black Han Sans","Noto Sans KR",sans-serif';
+const BODY = '"Noto Sans KR",system-ui,sans-serif';
+
+const $ = s => document.querySelector(s);
+const stage = $("#stage");
+const ctx   = stage.getContext("2d", { alpha:false });
+const cam   = $("#cam");
+const resVideo = $("#resVideo");
+
+/* ---- small helpers ---- */
+const clamp = (v,a,b)=>v<a?a:v>b?b:v;
+const lerp  = (a,b,t)=>a+(b-a)*t;
+const rnd   = (a,b)=>a+Math.random()*(b-a);
+const pick  = a=>a[(Math.random()*a.length)|0];
+const easeOut = t=>1-Math.pow(1-t,3);
+const easeIn  = t=>t*t*t;
+const shuffle = a=>{for(let i=a.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[a[i],a[j]]=[a[j],a[i]];}return a;};
+
+function rrect(c,x,y,w,h,r){
+  r=Math.min(r,w/2,h/2);
+  c.beginPath();
+  c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r);
+  c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath();
+}
+function emo(c,ch,x,y,size,rot=0,sx=1,sy=1,alpha=1){
+  c.save(); c.globalAlpha=alpha;
+  c.translate(x,y); if(rot) c.rotate(rot); if(sx!==1||sy!==1) c.scale(sx,sy);
+  c.font=size+"px "+EMOJI_FONT; c.textAlign="center"; c.textBaseline="middle";
+  c.fillText(ch,0,0); c.restore();
+}
+function txt(c,s,x,y,font,fill,align="center",baseline="middle",stroke=null,lw=8){
+  c.save(); c.font=font; c.textAlign=align; c.textBaseline=baseline;
+  if(stroke){ c.lineWidth=lw; c.lineJoin="round"; c.miterLimit=2; c.strokeStyle=stroke; c.strokeText(s,x,y); }
+  c.fillStyle=fill; c.fillText(s,x,y); c.restore();
+}
+
+/* ============================================================
+   2. Web Audio — 효과음 실시간 생성 + 녹화용 오디오 믹스
+   ============================================================ */
+let ac=null, sfxBus=null, recDest=null, micNode=null, noiseBuffer=null;
+
+function initAudio(micStream){
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if(!AC) return;
+  if(!ac) ac = new AC();
+  if(ac.state === "suspended") ac.resume();
+
+  if(!sfxBus){
+    sfxBus = ac.createGain();
+    sfxBus.gain.value = 0.9;
+    sfxBus.connect(ac.destination);          // 사용자 스피커
+  }
+  // 효과음 + 마이크를 하나의 MediaStreamDestination 으로 합쳐 녹화 오디오로 사용
+  if(recDest){ try{ sfxBus.disconnect(recDest); }catch(e){} }
+  recDest = ac.createMediaStreamDestination();
+  sfxBus.connect(recDest);
+  try{
+    if(micStream && micStream.getAudioTracks().length){
+      micNode = ac.createMediaStreamSource(micStream);
+      const mg = ac.createGain(); mg.gain.value = 1.0;
+      micNode.connect(mg);
+      mg.connect(recDest);                   // 스피커로는 안 보냄(하울링 방지)
+    }
+  }catch(e){ /* 마이크 없으면 효과음만 녹음 */ }
+}
+function noiseBuf(){
+  if(noiseBuffer) return noiseBuffer;
+  const n = Math.floor(ac.sampleRate * 0.7);
+  const b = ac.createBuffer(1, n, ac.sampleRate);
+  const d = b.getChannelData(0);
+  for(let i=0;i<n;i++) d[i] = Math.random()*2-1;
+  noiseBuffer = b; return b;
+}
+function sfx(name, vol=1){
+  if(!ac || !sfxBus || ac.state!=="running") return;
+  const t = ac.currentTime;
+  const g = ac.createGain(); g.connect(sfxBus); g.gain.value = 0.0001;
+
+  const env=(peak,atk,dec)=>{
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002,peak*vol),t+atk);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+atk+dec);
+  };
+  const noise=(dur,type,freq,q,peak)=>{
+    const s=ac.createBufferSource(); s.buffer=noiseBuf();
+    const f=ac.createBiquadFilter(); f.type=type; f.frequency.value=freq; if(q)f.Q.value=q;
+    const ng=ac.createGain();
+    ng.gain.setValueAtTime(Math.max(0.0002,peak*vol),t);
+    ng.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    s.connect(f); f.connect(ng); ng.connect(sfxBus);
+    s.start(t); s.stop(t+dur);
+  };
+
+  if(name==="squeak"){
+    const o=ac.createOscillator(); o.type="sawtooth";
+    o.frequency.setValueAtTime(760,t);
+    o.frequency.exponentialRampToValueAtTime(2350,t+0.085);
+    o.frequency.exponentialRampToValueAtTime(1500,t+0.15);
+    const f=ac.createBiquadFilter(); f.type="bandpass"; f.frequency.value=1800; f.Q.value=4.5;
+    env(0.34,0.012,0.15);
+    o.connect(f); f.connect(g); o.start(t); o.stop(t+0.2);
+  }
+  else if(name==="boing"){
+    const o=ac.createOscillator(); o.type="sine";
+    o.frequency.setValueAtTime(560,t);
+    o.frequency.exponentialRampToValueAtTime(105,t+0.3);
+    const lfo=ac.createOscillator(); lfo.type="sine"; lfo.frequency.value=16;
+    const lg=ac.createGain(); lg.gain.setValueAtTime(120,t);
+    lg.gain.exponentialRampToValueAtTime(4,t+0.34);
+    lfo.connect(lg); lg.connect(o.frequency); lfo.start(t); lfo.stop(t+0.36);
+    env(0.42,0.01,0.33);
+    o.connect(g); o.start(t); o.stop(t+0.38);
+  }
+  else if(name==="honk"){
+    const o1=ac.createOscillator(); o1.type="square"; o1.frequency.setValueAtTime(233,t);
+    o1.frequency.exponentialRampToValueAtTime(196,t+0.2);
+    const o2=ac.createOscillator(); o2.type="sawtooth"; o2.frequency.setValueAtTime(235.5,t);
+    o2.frequency.exponentialRampToValueAtTime(198,t+0.2);
+    const f=ac.createBiquadFilter(); f.type="lowpass"; f.frequency.value=1500;
+    const o2g=ac.createGain(); o2g.gain.value=0.45;
+    env(0.3,0.014,0.19);
+    o1.connect(f); o2.connect(o2g); o2g.connect(f); f.connect(g);
+    o1.start(t); o1.stop(t+0.24); o2.start(t); o2.stop(t+0.24);
+  }
+  else if(name==="boom"){
+    const o=ac.createOscillator(); o.type="sine";
+    o.frequency.setValueAtTime(150,t);
+    o.frequency.exponentialRampToValueAtTime(36,t+0.45);
+    env(0.62,0.008,0.5);
+    o.connect(g); o.start(t); o.stop(t+0.55);
+    noise(0.19,"lowpass",1100,0.9,0.3);
+  }
+  else if(name==="slide"){
+    const o=ac.createOscillator(); o.type="triangle";
+    o.frequency.setValueAtTime(280,t);
+    o.frequency.exponentialRampToValueAtTime(1650,t+0.4);
+    const f=ac.createBiquadFilter(); f.type="lowpass";
+    f.frequency.setValueAtTime(900,t); f.frequency.exponentialRampToValueAtTime(4200,t+0.4);
+    env(0.26,0.03,0.4);
+    o.connect(f); f.connect(g); o.start(t); o.stop(t+0.46);
+  }
+}
+
+/* ============================================================
+   3. MediaPipe Face Landmarker
+   ============================================================ */
+let faceLandmarker=null, modelPromise=null, modelReady=false, modelFailed=false;
+
+function loadModel(){
+  if(modelPromise) return modelPromise;
+  modelPromise = (async ()=>{
+    const fileset = await FilesetResolver.forVisionTasks(
+      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+    );
+    const opts = (delegate)=>({
+      baseOptions:{
+        modelAssetPath:"https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+        delegate
+      },
+      outputFaceBlendshapes:true,
+      runningMode:"VIDEO",
+      numFaces:1
+    });
+    try{
+      faceLandmarker = await FaceLandmarker.createFromOptions(fileset, opts("GPU"));
+    }catch(e){
+      faceLandmarker = await FaceLandmarker.createFromOptions(fileset, opts("CPU"));
+    }
+    modelReady = true;
+    return faceLandmarker;
+  })().catch(e=>{ modelFailed = true; console.error("[model]", e); throw e; });
+  return modelPromise;
+}
+loadModel().catch(()=>{});   // 권한과 무관하므로 페이지 로드 때 미리 받아둔다
+
+/* ---- 웃음 점수 (지정 공식 그대로) ---- */
+function scoreFromBlendshapes(cats){
+  const m = Object.create(null);
+  for(let i=0;i<cats.length;i++) m[cats[i].categoryName]=cats[i].score;
+  const v = k => m[k]||0;
+  const smile = (v("mouthSmileLeft")  + v("mouthSmileRight"))  / 2;
+  const cheek = (v("cheekSquintLeft") + v("cheekSquintRight")) / 2;
+  const press = (v("mouthPressLeft")  + v("mouthPressRight"))  / 2;
+  const jawOpen = v("jawOpen");
+  return smile + cheek*0.55 + Math.max(0, jawOpen-0.35)*0.5 + press*0.25;
+}
+
+let lastVideoTime = -1;
+let curScore = 0;
+let faceSeen  = false;
+let lastFaceAt = 0;
+
+function pollFace(now){
+  if(!faceLandmarker || !cam.videoWidth || cam.readyState < 2) return;
+  if(cam.currentTime === lastVideoTime) return;   // 프레임이 바뀐 경우에만 호출
+  lastVideoTime = cam.currentTime;
+  let res;
+  try{ res = faceLandmarker.detectForVideo(cam, now); }catch(e){ return; }
+  const bs = res && res.faceBlendshapes && res.faceBlendshapes[0];
+  if(bs && bs.categories && bs.categories.length){
+    curScore = scoreFromBlendshapes(bs.categories);
+    faceSeen = true;
+    lastFaceAt = now;
+  }else{
+    faceSeen = false;
+    curScore = 0;
+  }
+}
+
+/* ============================================================
+   4. 캔버스 카메라 드로잉 (cover 크롭 + 좌우반전)
+   ============================================================ */
+function videoCoverRect(dw,dh,zoom){
+  const vw=cam.videoWidth, vh=cam.videoHeight;
+  if(!vw||!vh) return null;
+  const scale = Math.max(dw/vw, dh/vh) * (zoom||1);
+  const sw = dw/scale, sh = dh/scale;
+  return { sx:(vw-sw)/2, sy:(vh-sh)/2, sw, sh };
+}
+function drawCam(c, dx, dy, dw, dh, zoom){
+  const r = videoCoverRect(dw,dh,zoom);
+  if(!r){ c.fillStyle=C.panel; c.fillRect(dx,dy,dw,dh); return false; }
+  c.save();
+  c.translate(dx+dw, dy); c.scale(-1,1);           // 좌우반전(거울)
+  try{ c.drawImage(cam, r.sx, r.sy, r.sw, r.sh, 0, 0, dw, dh); }catch(e){}
+  c.restore();
+  return true;
+}
+
+/* ============================================================
+   5. 자극 12종 — 전부 캔버스에 직접 그린다 (외부 이미지 없음)
+   ============================================================ */
+const EMO_FACE = ["😂","🤣","😹","🤪","🥴","🙃","🫠","🤡","👺","👽","🐸","🐷","🦆","🐔","💩","🥸","😜","🫡","🐧","🐥","🦖","🐙","🤠","🐒"];
+const EMO_RAIN = ["😂","🤣","💩","🍌","🐸","🤡","🧦","🍕","👽","🐙","🐔","🦆","🥴","🙃","🫠","🤪","🐷","🐧","🧀","🥑","🐥","🦖","😹","👺","🥸","🤠"];
+
+let ss = {};              // 현재 자극의 로컬 상태
+const SR = { w:W, h:SR_H };
+
+/* 1. 흔들리는 이모지 */
+const st1 = {
+  init(){ ss.e = pick(EMO_FACE); ss.hue = rnd(0,360); },
+  draw(t){
+    ctx.fillStyle = C.panel; ctx.fillRect(0,0,SR.w,SR.h);
+    const g = ctx.createRadialGradient(360,280,20,360,280,340);
+    g.addColorStop(0,"rgba(255,176,32,.18)"); g.addColorStop(1,"rgba(255,176,32,0)");
+    ctx.fillStyle=g; ctx.fillRect(0,0,SR.w,SR.h);
+    const x = 360 + Math.sin(t*17.5)*78;
+    const s = 1 + Math.sin(t*9.3)*0.14;
+    const rot = Math.sin(t*13)*0.16;
+    emo(ctx, ss.e, x, 285, 300, rot, s, s);
+  }
+};
+/* 2. 작았다가 화면 꽉 채우며 돌진 + 흰 플래시 */
+const st2 = {
+  init(){ ss.e=pick(EMO_FACE); ss.k=-1; },
+  draw(t){
+    ctx.fillStyle="#08160F"; ctx.fillRect(0,0,SR.w,SR.h);
+    const per=1.55, p=(t%per)/per, k=Math.floor(t/per);
+    if(k!==ss.k){ ss.k=k; ss.e=pick(EMO_FACE); }
+    // 속도선
+    ctx.save(); ctx.translate(360,280); ctx.strokeStyle="rgba(245,238,221,.10)"; ctx.lineWidth=3;
+    for(let i=0;i<22;i++){ const a=i/22*Math.PI*2+t*0.4;
+      ctx.beginPath(); ctx.moveTo(Math.cos(a)*120,Math.sin(a)*120); ctx.lineTo(Math.cos(a)*560,Math.sin(a)*560); ctx.stroke(); }
+    ctx.restore();
+    const s = 0.05 + Math.pow(p,4.2)*4.6;
+    emo(ctx, ss.e, 360, 285, 160, Math.sin(t*3)*0.08, s, s);
+    if(p>0.90){
+      if(!ss.hit){ ss.hit=true; sfx("boom",0.9); }
+      ctx.fillStyle = "rgba(255,255,255,"+((p-0.90)/0.10*0.95)+")";
+      ctx.fillRect(0,0,SR.w,SR.h);
+    } else if(p<0.5) ss.hit=false;
+  }
+};
+/* 3. 거대한 눈알 두 개 (도형) */
+const st3 = {
+  init(){ ss.gx=0; ss.gy=0; ss.tx=0; ss.ty=0; ss.next=0; ss.blink=0; ss.nb=1.4; },
+  draw(t,dt){
+    ctx.fillStyle="#0E2622"; ctx.fillRect(0,0,SR.w,SR.h);
+    if(t>ss.next){ ss.next=t+rnd(0.7,1.5); ss.tx=rnd(-1,1); ss.ty=rnd(-.8,.8); }
+    ss.gx=lerp(ss.gx,ss.tx,Math.min(1,dt*3.2)); ss.gy=lerp(ss.gy,ss.ty,Math.min(1,dt*3.2));
+    if(t>ss.nb){ ss.nb=t+rnd(1.1,2.8); ss.blink=1; }
+    ss.blink=Math.max(0,ss.blink-dt*7.5);
+    const lid = Math.sin(Math.min(1,ss.blink)*Math.PI);   // 0→1→0
+    const eye=(cx)=>{
+      const rx=152, ry=118*(1-lid*0.94);
+      ctx.save();
+      ctx.fillStyle="#F7F3E6"; ctx.beginPath(); ctx.ellipse(cx,285,rx,Math.max(2,ry),0,0,7); ctx.fill();
+      ctx.strokeStyle="#0B1F1D"; ctx.lineWidth=9; ctx.stroke();
+      if(ry>26){
+        ctx.beginPath(); ctx.ellipse(cx,285,rx-6,ry-4,0,0,7); ctx.clip();
+        const ix=cx+ss.gx*74, iy=285+ss.gy*54;
+        ctx.fillStyle="#7A4A1B"; ctx.beginPath(); ctx.arc(ix,iy,62,0,7); ctx.fill();
+        ctx.fillStyle="#0B1F1D"; ctx.beginPath(); ctx.arc(ix,iy,31,0,7); ctx.fill();
+        ctx.fillStyle="rgba(255,255,255,.9)"; ctx.beginPath(); ctx.arc(ix-20,iy-22,14,0,7); ctx.fill();
+        // 실핏줄
+        ctx.strokeStyle="rgba(255,59,47,.35)"; ctx.lineWidth=3;
+        for(let i=0;i<5;i++){ const a=i*1.3+t*0.2;
+          ctx.beginPath(); ctx.moveTo(cx+Math.cos(a)*rx,285+Math.sin(a)*ry);
+          ctx.quadraticCurveTo(cx+Math.cos(a)*80,285+Math.sin(a)*40, ix+Math.cos(a)*60, iy+Math.sin(a)*40); ctx.stroke(); }
+      }
+      ctx.restore();
+    };
+    eye(190); eye(530);
+  }
+};
+/* 4. 오리들이 통통 튀며 가로질러 감 */
+const st4 = {
+  init(){
+    ss.d = Array.from({length:5},(_,i)=>({
+      x:rnd(-260,760), sp:rnd(120,235)*(Math.random()<.5?-1:1),
+      ph:rnd(0,6.3), sz:rnd(96,150), b:0, e:Math.random()<.25?"🐔":"🦆"
+    }));
+    ss.cool=0;
+  },
+  draw(t,dt){
+    ctx.fillStyle="#123B34"; ctx.fillRect(0,0,SR.w,SR.h);
+    ctx.fillStyle="rgba(255,176,32,.07)";
+    for(let i=0;i<6;i++) ctx.fillRect(0, i*95+20, SR.w, 42);
+    ss.cool-=dt;
+    for(const d of ss.d){
+      d.x += d.sp*dt;
+      if(d.x>820) d.x=-140; if(d.x<-140) d.x=820;
+      const hop = Math.abs(Math.sin(t*4.4 + d.ph));
+      const y = 430 - hop*185;
+      const sq = 1 + (1-hop)*0.16;
+      if(hop<0.06 && ss.cool<=0){ ss.cool=0.16; sfx("squeak",0.5); }
+      ctx.save(); ctx.globalAlpha=.25; ctx.fillStyle="#08160F";
+      ctx.beginPath(); ctx.ellipse(d.x, 470, d.sz*0.34*(1.1-hop*0.5), 12, 0,0,7); ctx.fill(); ctx.restore();
+      emo(ctx, d.e, d.x, y, d.sz, Math.sin(t*6+d.ph)*0.18, (d.sp<0?-1:1)/sq, sq);
+    }
+  }
+};
+/* 5. 점점 빨리 회전하다 화면 밖으로 날아감 */
+const st5 = {
+  init(){ ss.e=pick(EMO_FACE); ss.k=-1; },
+  draw(t){
+    ctx.fillStyle="#10231F"; ctx.fillRect(0,0,SR.w,SR.h);
+    const per=3.4, p=(t%per)/per, k=Math.floor(t/per);
+    if(k!==ss.k){ ss.k=k; ss.e=pick(EMO_FACE); ss.ang=rnd(0,6.3); ss.flew=false; }
+    const spin = Math.pow(p,2.4)*95;
+    let x=360, y=285, a=spin, s=1;
+    if(p>0.82){
+      const q=(p-0.82)/0.18;
+      if(!ss.flew){ ss.flew=true; sfx("slide",0.75); }
+      x += Math.cos(ss.ang)*q*q*980; y += Math.sin(ss.ang)*q*q*980; s = 1+q*0.7;
+    }
+    ctx.save(); ctx.globalAlpha=.35;
+    for(let i=1;i<=4;i++) emo(ctx, ss.e, 360, 285, 250, spin-i*0.35, 1,1, 0.12);
+    ctx.restore();
+    emo(ctx, ss.e, x, y, 250, a, s, s);
+  }
+};
+/* 6. 이모지 26개가 비처럼 쏟아짐 */
+const st6 = {
+  init(){
+    ss.p = Array.from({length:26},()=>({
+      x:rnd(0,SR.w), y:rnd(-620,SR.h), v:rnd(230,520),
+      s:rnd(52,112), r:rnd(0,6.3), vr:rnd(-3.4,3.4), e:pick(EMO_RAIN)
+    }));
+  },
+  draw(t,dt){
+    ctx.fillStyle="#0D2320"; ctx.fillRect(0,0,SR.w,SR.h);
+    for(const p of ss.p){
+      p.y += p.v*dt; p.r += p.vr*dt;
+      if(p.y > SR.h+90){ p.y=-90; p.x=rnd(0,SR.w); p.e=pick(EMO_RAIN); p.v=rnd(230,520); }
+      emo(ctx, p.e, p.x, p.y, p.s, p.r);
+    }
+  }
+};
+/* 7. 가장자리에서 아주 천천히 기어오다 마지막에 확 튀어나옴 */
+const st7 = {
+  init(){ ss.e=pick(EMO_FACE); ss.side=(Math.random()*4)|0; ss.k=-1; },
+  draw(t){
+    ctx.fillStyle="#0A1D1A"; ctx.fillRect(0,0,SR.w,SR.h);
+    const per=4.6, p=(t%per)/per, k=Math.floor(t/per);
+    if(k!==ss.k){ ss.k=k; ss.e=pick(EMO_FACE); ss.side=(Math.random()*4)|0; ss.pop=false; }
+    const creep = Math.min(1, p/0.86);
+    const ease  = easeIn(creep)*0.35 + creep*0.65;
+    let x,y;
+    if(ss.side===0){ x=-150+ease*330; y=285+Math.sin(t*3)*18; }
+    else if(ss.side===1){ x=870-ease*330; y=285+Math.sin(t*3)*18; }
+    else if(ss.side===2){ x=360+Math.sin(t*3)*24; y=-150+ease*300; }
+    else { x=360+Math.sin(t*3)*24; y=710-ease*300; }
+    let s=1;
+    if(p>0.86){
+      const q=(p-0.86)/0.14;
+      if(!ss.pop){ ss.pop=true; sfx("honk",1); }
+      x=lerp(x,360,easeOut(q)); y=lerp(y,285,easeOut(q)); s=1+easeOut(q)*1.5;
+      ctx.fillStyle="rgba(255,59,47,"+(0.3*(1-q))+")"; ctx.fillRect(0,0,SR.w,SR.h);
+    }
+    emo(ctx, ss.e, x, y, 230, Math.sin(t*2)*0.1, s, s);
+  }
+};
+/* 8. 세로로 극단적으로 늘어났다 가로로 납작해짐 */
+const st8 = {
+  init(){ ss.e=pick(EMO_FACE); ss.last=-1; },
+  draw(t){
+    ctx.fillStyle="#14332E"; ctx.fillRect(0,0,SR.w,SR.h);
+    const per=1.25, p=(t%per)/per;
+    const w = Math.sin(p*Math.PI*2);
+    const sy = 1 + Math.max(0, w)*2.35;
+    const sx = 1 + Math.max(0,-w)*2.35;
+    const kk = Math.floor(t/(per/2));
+    if(kk!==ss.last){ ss.last=kk; sfx("boing",0.6); }
+    emo(ctx, ss.e, 360, 285, 210, 0, sx/Math.sqrt(sy), sy/Math.sqrt(sx));
+  }
+};
+/* 9. 배경 빨강/노랑 점멸 + 사이렌 이모지 진동 */
+const st9 = {
+  init(){ ss.last=-1; },
+  draw(t){
+    const f = Math.floor(t*9)%2;
+    ctx.fillStyle = f ? "#FF3B2F" : "#FFB020";
+    ctx.fillRect(0,0,SR.w,SR.h);
+    ctx.fillStyle="rgba(0,0,0,.12)";
+    for(let i=0;i<9;i++) ctx.fillRect(0, i*64+((t*220)%64), SR.w, 22);
+    const kk=Math.floor(t*1.6);
+    if(kk!==ss.last){ ss.last=kk; sfx("honk",0.55); }
+    const jx=Math.sin(t*46)*13, jy=Math.cos(t*39)*11;
+    emo(ctx,"🚨",190+jx,285+jy,190, Math.sin(t*20)*0.2);
+    emo(ctx,"🚨",530-jx,285-jy,190,-Math.sin(t*20)*0.2);
+    txt(ctx, f?"!!!":"???", 360, 470, '84px '+HEAD, "#0B1F1D");
+  }
+};
+/* 10. 라이브 웹캠 가로 슬라이스 26개 물결 왜곡 */
+const st10 = {
+  init(){ ss.amp=0; },
+  draw(t,dt){
+    ctx.fillStyle="#08160F"; ctx.fillRect(0,0,SR.w,SR.h);
+    const r = videoCoverRect(SR.w, SR.h, 1);
+    if(!r) return;
+    ss.amp = lerp(ss.amp, 78, Math.min(1,dt*1.4));
+    const N=26, dh=SR.h/N, sh=r.sh/N;
+    ctx.save();
+    ctx.translate(SR.w,0); ctx.scale(-1,1);      // 거울
+    for(let i=0;i<N;i++){
+      const off = Math.sin(t*4.1 + i*0.62)*ss.amp*(0.45+0.55*Math.sin(i*0.31+t*1.1));
+      const sq  = 1 + Math.sin(t*2.7 + i*0.4)*0.14;
+      try{
+        ctx.drawImage(cam, r.sx, r.sy+sh*i, r.sw, sh,
+                      off, dh*i, SR.w*sq, dh+1.2);
+      }catch(e){}
+    }
+    ctx.restore();
+    ctx.fillStyle="rgba(255,176,32,.07)"; ctx.fillRect(0,0,SR.w,SR.h);
+  }
+};
+/* 11. 라이브 웹캠 3배 확대 */
+const st11 = {
+  init(){ ss.z=1.6; },
+  draw(t,dt){
+    ctx.fillStyle="#08160F"; ctx.fillRect(0,0,SR.w,SR.h);
+    ss.z = lerp(ss.z, 3, Math.min(1,dt*1.5));
+    const z = ss.z + Math.sin(t*2.3)*0.14;
+    ctx.save();
+    ctx.translate(Math.sin(t*3.1)*10, Math.cos(t*2.4)*8);
+    drawCam(ctx, 0, 0, SR.w, SR.h, z);
+    ctx.restore();
+    ctx.fillStyle="rgba(255,59,47,"+(0.05+0.05*Math.sin(t*6))+")"; ctx.fillRect(0,0,SR.w,SR.h);
+    const g=ctx.createRadialGradient(360,280,150,360,280,430);
+    g.addColorStop(0,"rgba(0,0,0,0)"); g.addColorStop(1,"rgba(0,0,0,.55)");
+    ctx.fillStyle=g; ctx.fillRect(0,0,SR.w,SR.h);
+  }
+};
+/* 12. 아주 작아졌다가 폭발하듯 커짐 */
+const st12 = {
+  init(){ ss.e=pick(EMO_FACE); ss.k=-1; },
+  draw(t){
+    ctx.fillStyle="#0B211D"; ctx.fillRect(0,0,SR.w,SR.h);
+    const per=1.9, p=(t%per)/per, k=Math.floor(t/per);
+    if(k!==ss.k){ ss.k=k; ss.e=pick(EMO_FACE); ss.bang=false; }
+    let s;
+    if(p<0.72){ s = lerp(0.62,0.05,easeOut(p/0.72)); }
+    else {
+      const q=(p-0.72)/0.28;
+      if(!ss.bang){ ss.bang=true; sfx("boom",0.8); }
+      s = 0.05 + easeOut(q)*3.1;
+      ctx.save(); ctx.translate(360,285); ctx.strokeStyle="rgba(255,176,32,"+(1-q)+")"; ctx.lineWidth=9;
+      for(let i=0;i<16;i++){ const a=i/16*6.283;
+        ctx.beginPath(); ctx.moveTo(Math.cos(a)*(60+q*250),Math.sin(a)*(60+q*250));
+        ctx.lineTo(Math.cos(a)*(120+q*420),Math.sin(a)*(120+q*420)); ctx.stroke(); }
+      ctx.restore();
+    }
+    emo(ctx, ss.e, 360, 285, 220, 0, s, s);
+  }
+};
+
+const STIMS = [st1,st2,st3,st4,st5,st6,st7,st8,st9,st10,st11,st12];
+let bag=[], curStim=null, stimStart=0, stimDur=0;
+
+function nextStim(now){
+  if(!bag.length) bag = shuffle(STIMS.map((_,i)=>i));
+  const id = bag.pop();
+  curStim = STIMS[id];
+  stimStart = now;
+  stimDur = rnd(4000,6000);
+  ss = {};
+  if(curStim.init) curStim.init();
+}
+function drawStim(now, dt){
+  if(!curStim || now-stimStart > stimDur) nextStim(now);
+  const t = (now-stimStart)/1000;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0,0,SR.w,SR.h); ctx.clip();
+  curStim.draw(t, dt);
+  ctx.restore();
+}
+
+/* ============================================================
+   6. HUD / 카운트다운 / 실패 연출 렌더링
+   ============================================================ */
+let barShown = 0;
+function sens(){ return SENS[diff]; }
+function diffName(){ return T(diff==="easy"?"t_easy":diff==="hard"?"t_hard":"t_normal"); }
+
+function fitFont(s, maxW, family, size){
+  ctx.font = size+"px "+family;
+  let w = ctx.measureText(s).width;
+  while(w > maxW && size > 18){ size = size*(maxW/w)*0.985; ctx.font=size+"px "+family; w=ctx.measureText(s).width; }
+  return size;
+}
+function drawTensionBar(){
+  const ratio = clamp((curScore - base)/sens(), 0, 1);
+  barShown = lerp(barShown, ratio, 0.35);
+  ctx.fillStyle = "rgba(245,238,221,.13)";
+  ctx.fillRect(0, H-BAR_H, W, BAR_H);
+  ctx.fillStyle = barShown > 0.7 ? C.red : C.amber;
+  ctx.fillRect(0, H-BAR_H, W*barShown, BAR_H);
+  if(barShown > 0.7){
+    ctx.fillStyle = "rgba(255,59,47,.16)";
+    ctx.fillRect(0, CAM_Y, W, CAM_S);
+  }
+}
+function drawWatermark(){
+  txt(ctx, T("wm"), W-24, H-BAR_H-16, '25px '+BODY, "rgba(245,238,221,.6)", "right", "bottom", "rgba(0,0,0,.55)", 5);
+}
+function drawTimer(now){
+  const el = (now - playStart)/1000;
+  const s  = el.toFixed(1) + T("secShort");
+  txt(ctx, s, 26, 578, '76px '+HEAD, C.cream, "left", "top", "rgba(0,0,0,.88)", 11);
+}
+function drawHud(now){
+  drawTimer(now);
+  const goneFor = now - lastFaceAt;
+  if(goneFor > 420){
+    const left = Math.max(0,(PLAY_NOFACE_MS-goneFor)/1000);
+    const a = 0.55 + 0.45*Math.sin(now/90);
+    ctx.fillStyle = "rgba(255,59,47,"+(0.14*a)+")"; ctx.fillRect(0,CAM_Y,W,CAM_S);
+    txt(ctx, T("cd_noface"), 360, 960, '46px '+HEAD, C.red, "center","middle","rgba(0,0,0,.75)",10);
+    txt(ctx, left.toFixed(1)+T("secShort"), 360, 1030, '38px '+HEAD, C.cream, "center","middle","rgba(0,0,0,.75)",9);
+  }
+  drawTensionBar();
+  drawWatermark();
+}
+
+function renderPlay(now, dt){
+  ctx.fillStyle = C.deep; ctx.fillRect(0,0,W,H);
+  drawStim(now, dt);
+  const el = now - playStart;
+  if(el < 700){
+    const a = 1 - el/700;
+    txt(ctx, T("cd_go"), 360, 280, (150+ (1-a)*40)+'px '+HEAD,
+        "rgba(255,255,255,"+a+")", "center","middle","rgba(11,31,29,"+(a*0.7)+")", 16);
+  }
+  if(!drawCam(ctx, 0, CAM_Y, CAM_S, CAM_S, 1)){
+    txt(ctx, "…", 360, 920, '90px '+HEAD, C.muted);
+  }
+  ctx.fillStyle = C.line; ctx.fillRect(0, CAM_Y-4, W, 4);
+  drawHud(now);
+}
+
+function renderCountdown(now){
+  ctx.fillStyle = C.deep; ctx.fillRect(0,0,W,H);
+  /* --- 자극 영역: 카운트다운 --- */
+  ctx.fillStyle = C.panel; ctx.fillRect(0,0,W,SR_H);
+  ctx.strokeStyle = "rgba(30,71,64,.9)"; ctx.lineWidth = 2;
+  for(let i=1;i<7;i++){ ctx.beginPath(); ctx.moveTo(0,i*80); ctx.lineTo(W,i*80); ctx.stroke(); }
+
+  const left = Math.max(0, CD_MS - (now - cdStart));
+  const n = Math.max(1, Math.ceil(left/1000));
+  const frac = 1 - ((left % 1000)/1000);
+  const pop = 1 + (1 - easeOut(Math.min(1, frac*3)))*0.34;
+
+  const ring = 1 - left/CD_MS;
+  ctx.save();
+  ctx.translate(360, 232);
+  ctx.lineWidth = 12; ctx.lineCap = "round";
+  ctx.strokeStyle = "rgba(30,71,64,1)";
+  ctx.beginPath(); ctx.arc(0,0,132,0,Math.PI*2); ctx.stroke();
+  ctx.strokeStyle = noFace ? C.red : C.amber;
+  ctx.beginPath(); ctx.arc(0,0,132,-Math.PI/2, -Math.PI/2 + Math.PI*2*ring); ctx.stroke();
+  ctx.restore();
+  txt(ctx, String(n), 360, 232, (170*pop).toFixed(0)+'px '+HEAD, noFace ? C.red : C.amber);
+
+  if(noFace){
+    txt(ctx, T("cd_noface"), 360, 412, '40px '+HEAD, C.red, "center","middle");
+  }else{
+    txt(ctx, T("cd_calib"), 360, 400, '26px '+BODY, C.muted, "center","middle");
+    const s = fitFont(T("cd_hold"), 640, BODY, 27);
+    txt(ctx, T("cd_hold"), 360, 448, s.toFixed(1)+'px '+BODY, C.cream, "center","middle");
+  }
+  txt(ctx, diffName()+" · "+sens().toFixed(2), 360, 512, '22px '+BODY, "rgba(122,148,144,.85)", "center","middle");
+
+  /* --- 카메라 영역 + 얼굴 가이드 --- */
+  drawCam(ctx, 0, CAM_Y, CAM_S, CAM_S, 1);
+  ctx.save();
+  ctx.setLineDash([16,14]); ctx.lineWidth = 5;
+  ctx.strokeStyle = noFace ? "rgba(255,59,47,.95)" : "rgba(255,176,32,.7)";
+  ctx.beginPath(); ctx.ellipse(360, 900, 210, 268, 0, 0, Math.PI*2); ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = C.line; ctx.fillRect(0, CAM_Y-4, W, 4);
+  drawWatermark();
+}
+
+function drawFail(now){
+  const p = clamp((now - failStart)/FAIL_MS, 0, 1);
+  /* 스냅샷의 카메라 영역만 9:16 커버 크롭으로 채우며 천천히 푸시인 */
+  const z  = 1 + 0.17*easeOut(p);
+  const sh = 720/z, sw = sh*(720/1280), sx = (720-sw)/2, sy = CAM_Y + (720-sh)/2;
+  ctx.fillStyle = C.deep; ctx.fillRect(0,0,W,H);
+  if(snapCv){ try{ ctx.drawImage(snapCv, sx, sy, sw, sh, 0, 0, W, H); }catch(e){} }
+
+  /* 빨간 플래시가 빠르게 사라짐 */
+  const fa = Math.max(0, 1 - p/0.2)*0.92;
+  if(fa > 0){ ctx.fillStyle = "rgba(255,59,47,"+fa+")"; ctx.fillRect(0,0,W,H); }
+
+  /* 하단 400px 그라디언트 슬랩 */
+  const g = ctx.createLinearGradient(0, H-400, 0, H);
+  g.addColorStop(0,   "rgba(11,31,29,0)");
+  g.addColorStop(0.42,"rgba(11,31,29,.86)");
+  g.addColorStop(1,   "rgba(11,31,29,.985)");
+  ctx.fillStyle = g; ctx.fillRect(0, H-400, W, 400);
+
+  const rise = easeOut(clamp((p-0.05)/0.32, 0, 1));
+  ctx.save();
+  ctx.globalAlpha = rise;
+  ctx.translate(0, (1-rise)*34);
+
+  const esc = failReason === "escape";
+  txt(ctx, esc ? T("failEsc") : T("fail"), 360, 972, '62px '+HEAD, C.red, "center","middle","rgba(0,0,0,.5)",8);
+
+  const secTxt = (finalMs/1000).toFixed(1) + T("secShort");
+  const fs = fitFont(secTxt, 620, HEAD, 134);
+  txt(ctx, secTxt, 360, 1090, fs.toFixed(1)+'px '+HEAD, C.cream, "center","middle","rgba(0,0,0,.45)",10);
+
+  const sub = esc ? T("escNote") : gradeOf(finalMs/1000);
+  const ss2 = fitFont(sub, 620, BODY, 28);
+  txt(ctx, sub, 360, 1178, ss2.toFixed(1)+'px '+BODY, C.amber, "center","middle");
+
+  txt(ctx, T("wm"), 360, 1236, '24px '+BODY, "rgba(122,148,144,.95)", "center","middle");
+  ctx.restore();
+
+  if(p >= 1 && !failDone){ failDone = true; finishFail(); }
+}
+
+/* ============================================================
+   7. 게임 상태 머신
+   ============================================================ */
+let phase = "idle";            // idle | countdown | play | fail | done
+let diff  = "normal";
+let cdStart = 0, cdSamples = [], base = 0, noFace = false;
+let playStart = 0, overSince = 0;
+let failStart = 0, failReason = "laugh", finalMs = 0, failDone = false, snapCv = null;
+let raf = 0, lastT = 0;
+
+function median(a){
+  if(!a.length) return 0;
+  const b = a.slice().sort((x,y)=>x-y), n = b.length;
+  return n % 2 ? b[(n-1)>>1] : (b[n/2-1]+b[n/2])/2;
+}
+function gradeOf(sec){
+  const g = STR[LANG].grades;
+  for(const x of g) if(sec < x.t) return x.s;
+  return g[g.length-1].s;
+}
+
+function beginCountdown(){
+  phase = "countdown";
+  const now = performance.now();
+  cdStart = now; cdSamples = []; noFace = false;
+  base = 0; curScore = 0; faceSeen = false; lastFaceAt = now; lastVideoTime = -1;
+  bag = []; curStim = null; barShown = 0; failDone = false; snapCv = null;
+  lastT = now;
+  if(!raf) raf = requestAnimationFrame(loop);
+}
+function stepCountdown(now){
+  /* 얼굴이 0.8초 이상 안 보이면 카운트다운 리셋 (base가 0으로 잡히는 것 방지) */
+  if(now - lastFaceAt > CD_NOFACE_MS){
+    cdStart = now; cdSamples.length = 0; noFace = true;
+    return;
+  }
+  if(faceSeen){ noFace = false; cdSamples.push(curScore); }
+  if(now - cdStart >= CD_MS){
+    if(cdSamples.length < MIN_SAMPLES){   // 샘플이 모자라면 base를 믿을 수 없다 → 다시
+      cdStart = now; cdSamples.length = 0; noFace = true; return;
+    }
+    base = median(cdSamples);
+    beginPlay(now);
+  }
+}
+function beginPlay(now){
+  phase = "play";
+  playStart = now; overSince = 0; lastFaceAt = now; barShown = 0;
+  nextStim(now);
+  startRecording();                       // 카운트다운이 끝나는 순간 녹화 시작
+  sfx("slide", 0.7);
+}
+function judge(now){
+  /* 게임 중 얼굴이 1.3초 이상 안 보이면 '도망'으로 실패 */
+  if(now - lastFaceAt > PLAY_NOFACE_MS){ triggerFail(now, "escape"); return; }
+  if((curScore - base) > sens()){
+    if(!overSince) overSince = now;
+    else if(now - overSince >= HOLD_MS) triggerFail(now, "laugh");
+  }else{
+    overSince = 0;
+  }
+}
+function triggerFail(now, reason){
+  if(phase !== "play") return;
+  phase = "fail"; failReason = reason; failStart = now; failDone = false;
+  finalMs = Math.max(0, now - playStart);
+  snapCv = document.createElement("canvas");
+  snapCv.width = W; snapCv.height = H;
+  try{ snapCv.getContext("2d").drawImage(stage, 0, 0); }catch(e){ snapCv = null; }
+  sfx("boom", 1);
+  setTimeout(()=>sfx("slide", 0.45), 110);
+}
+function finishFail(){
+  phase = "done";
+  if(raf){ cancelAnimationFrame(raf); raf = 0; }
+  if(recorder && recorder.state === "recording"){
+    setTimeout(onRecordingDone, 3000);            // onstop이 오지 않는 경우 대비
+    try{ recorder.stop(); }catch(e){ onRecordingDone(); }
+  }else{
+    onRecordingDone();
+  }
+}
+
+function loop(now){
+  raf = requestAnimationFrame(loop);
+  let dt = (now - lastT)/1000; lastT = now;
+  if(!(dt > 0) || dt > 0.08) dt = 0.016;
+
+  pollFace(now);
+
+  if(phase === "countdown"){ stepCountdown(now); }
+  if(phase === "countdown"){ renderCountdown(now); return; }
+  if(phase === "play"){ renderPlay(now, dt); judge(now); return; }
+  if(phase === "fail"){ drawFail(now); return; }
+}
+
+/* ============================================================
+   8. 녹화
+   ============================================================ */
+let mediaStream=null, capStream=null, recorder=null, recMime="", chunks=[], recBlob=null, resURL=null, resultShown=false;
+
+function pickMime(){
+  if(!window.MediaRecorder || !MediaRecorder.isTypeSupported) return "";
+  const list = [
+    'video/mp4;codecs="avc1.42E01E,mp4a.40.2"',   // 인스타그램은 webm을 안 받는다 → mp4 우선
+    'video/mp4',
+    'video/webm;codecs=vp9,opus',
+    'video/webm'
+  ];
+  for(const m of list){ try{ if(MediaRecorder.isTypeSupported(m)) return m; }catch(e){} }
+  return "";
+}
+function setupRecorder(){
+  recorder = null; chunks = []; recBlob = null; recMime = "";
+  if(!window.MediaRecorder || !stage.captureStream) return;
+  try{ capStream = stage.captureStream(30); }catch(e){ capStream = null; return; }
+  const tracks = capStream.getVideoTracks().slice();
+  if(recDest && recDest.stream.getAudioTracks().length) tracks.push(recDest.stream.getAudioTracks()[0]);
+  const mixed = new MediaStream(tracks);
+  const m = pickMime();
+  try{
+    recorder = m ? new MediaRecorder(mixed, { mimeType:m, videoBitsPerSecond:5000000, audioBitsPerSecond:128000 })
+                 : new MediaRecorder(mixed);
+  }catch(e){
+    try{ recorder = new MediaRecorder(mixed); }catch(e2){ recorder = null; return; }
+  }
+  recMime = recorder.mimeType || m || "video/webm";
+  recorder.ondataavailable = e => { if(e.data && e.data.size) chunks.push(e.data); };
+  recorder.onstop = () => {
+    recBlob = chunks.length ? new Blob(chunks, { type: recMime.split(";")[0] }) : null;
+    onRecordingDone();
+  };
+  recorder.onerror = () => { onRecordingDone(); };
+}
+function startRecording(){
+  if(recorder && recorder.state === "inactive"){
+    try{ recorder.start(); }catch(e){ recorder = null; }
+  }
+}
+function stopMedia(){
+  try{ if(mediaStream) mediaStream.getTracks().forEach(t=>t.stop()); }catch(e){}
+  try{ if(capStream) capStream.getTracks().forEach(t=>t.stop()); }catch(e){}
+  try{ cam.pause(); cam.srcObject = null; }catch(e){}
+  try{ if(micNode) micNode.disconnect(); }catch(e){}
+  mediaStream = null; capStream = null; micNode = null;
+}
+function onRecordingDone(){
+  if(resultShown) return;
+  resultShown = true;
+  stopMedia();
+  showResult();
+}
+
+/* ============================================================
+   9. 결과 / 공유 / 저장
+   ============================================================ */
+const startBtn=$("#startBtn"), startNote=$("#startNote"), resNote=$("#resNote"),
+      langBtn=$("#langBtn"), vidWrap=$("#vidWrap");
+let startNoteKey = "ready", startNoteWarn = false, resNoteKey = "";
+
+function show(id){
+  document.querySelectorAll(".screen").forEach(s => s.classList.toggle("on", s.id === id));
+}
+function setStartNote(key, warn){
+  startNoteKey = key; startNoteWarn = !!warn;
+  startNote.textContent = key ? T(key) : "";
+  startNote.classList.toggle("warn", !!warn);
+}
+function setResNote(key){
+  resNoteKey = key;
+  resNote.textContent = key ? T(key) : "";
+}
+function fileExt(){ return (recBlob && /mp4/.test(recBlob.type)) ? "mp4" : (recBlob ? "webm" : "mp4"); }
+function fileName(){ return "dontlaugh_" + (finalMs/1000).toFixed(1) + "s." + fileExt(); }
+
+function renderResultTexts(){
+  const sec = finalMs/1000;
+  $("#resTime").textContent = sec.toFixed(1);
+  $("#resGrade").textContent = failReason === "escape" ? T("escGrade") : gradeOf(sec);
+  $("#resMeta").textContent = diffName() + " · " + (failReason==="escape" ? T("r_escape") : T("r_laugh"));
+}
+function showResult(){
+  renderResultTexts();
+  if(resURL){ URL.revokeObjectURL(resURL); resURL = null; }
+  const miss = $("#vidMiss");
+  if(recBlob && recBlob.size){
+    if(miss) miss.remove();
+    resURL = URL.createObjectURL(recBlob);
+    resVideo.style.display = "";
+    resVideo.src = resURL;
+    resVideo.muted = true;
+    resVideo.play().catch(()=>{});
+    setResNote("");
+  }else{
+    resVideo.removeAttribute("src"); resVideo.load?.();
+    resVideo.style.display = "none";
+    if(!miss){
+      const d = document.createElement("div");
+      d.id = "vidMiss"; d.className = "vidmiss"; d.textContent = T("noRec");
+      vidWrap.appendChild(d);
+    }else{ miss.textContent = T("noRec"); }
+    setResNote("noRec");
+  }
+  show("scr-result");
+}
+function saveBlob(){
+  if(!recBlob) return false;
+  const url = URL.createObjectURL(recBlob);
+  const a = document.createElement("a");
+  a.href = url; a.download = fileName();
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+  return true;
+}
+async function doShare(){
+  if(!recBlob){ setResNote("noRec"); return; }
+  const sec = (finalMs/1000).toFixed(1);
+  const file = new File([recBlob], fileName(), { type: recBlob.type || "video/mp4" });
+  const payload = { files:[file], title:T("shareTitle"), text:STR[LANG].shareText(sec) };
+  if(navigator.canShare && navigator.share){
+    let ok = false;
+    try{ ok = navigator.canShare(payload); }catch(e){ ok = false; }
+    if(ok){
+      try{ await navigator.share(payload); setResNote(""); return; }
+      catch(e){
+        if(e && e.name === "AbortError"){ setResNote(""); return; }
+        setResNote("shareErr"); return;
+      }
+    }
+  }
+  if(saveBlob()) setResNote("shareUnsupported");
+}
+
+/* ============================================================
+   10. 시작 / 권한 / 정리
+   ============================================================ */
+async function fontsReady(){
+  if(!document.fonts) return;
+  try{ await document.fonts.ready; }catch(e){}
+  try{
+    await Promise.all([
+      document.fonts.load('76px "Black Han Sans"', "0123456789.초s실패도망시작"),
+      document.fonts.load('700 30px "Noto Sans KR"', "안웃기챌린지얼굴이화면에없습니다기준표정측정중"),
+      document.fonts.load('400 25px "Noto Sans KR"', "안웃기챌린지")
+    ]);
+  }catch(e){}
+  try{ await document.fonts.ready; }catch(e){}
+}
+function waitVideo(){
+  return new Promise(res=>{
+    const t0 = performance.now();
+    (function tick(){
+      if(cam.videoWidth && cam.readyState >= 2) return res(true);
+      if(performance.now()-t0 > 6000) return res(false);
+      requestAnimationFrame(tick);
+    })();
+  });
+}
+async function getStream(){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    const err = new Error("getUserMedia unavailable (HTTPS required)");
+    err.name = "SecurityError"; throw err;
+  }
+  const v = { facingMode:"user", width:{ideal:1280}, height:{ideal:720}, frameRate:{ideal:30} };
+  try{
+    return await navigator.mediaDevices.getUserMedia({ video:v, audio:true });
+  }catch(e){
+    if(e && e.name === "NotAllowedError") throw e;
+    /* 마이크가 없거나 점유 중이면 비디오만으로 재시도 */
+    return await navigator.mediaDevices.getUserMedia({ video:v, audio:false });
+  }
+}
+async function start(){
+  if(phase === "countdown" || phase === "play" || phase === "fail") return;
+  startBtn.disabled = true;
+  resultShown = false; recBlob = null; chunks = [];
+
+  setStartNote("loadingModel");
+  try{ await loadModel(); }
+  catch(e){ setStartNote("err_model", true); startBtn.disabled = false; return; }
+
+  await fontsReady();               // 웹폰트가 준비돼야 캔버스 텍스트가 제대로 그려진다
+
+  setStartNote("asking");
+  let stream;
+  try{
+    stream = await getStream();     // getUserMedia는 반드시 시작 버튼 클릭 이후
+  }catch(e){
+    const n = e && e.name;
+    setStartNote(n === "NotAllowedError" || n === "SecurityError" ? "err_denied"
+               : n === "NotFoundError" || n === "OverconstrainedError" ? "err_nodev"
+               : n === "NotReadableError" || n === "AbortError" ? "err_busy"
+               : "err_denied", true);
+    if(!(n==="NotAllowedError"||n==="SecurityError"||n==="NotFoundError"||n==="OverconstrainedError"||n==="NotReadableError"||n==="AbortError")){
+      startNote.textContent = T("err_generic") + (e && e.message ? e.message : e);
+    }
+    startBtn.disabled = false;
+    show("scr-start");
+    return;
+  }
+
+  mediaStream = stream;
+  cam.srcObject = stream;
+  cam.muted = true; cam.playsInline = true;
+  try{ await cam.play(); }catch(e){}
+  await waitVideo();
+
+  initAudio(stream);
+  setupRecorder();
+
+  setStartNote("ready");
+  startBtn.disabled = false;
+  show("scr-game");
+  beginCountdown();
+}
+function goHome(){
+  if(raf){ cancelAnimationFrame(raf); raf = 0; }
+  phase = "idle";
+  stopMedia();
+  if(recorder && recorder.state === "recording"){ try{ recorder.stop(); }catch(e){} }
+  recorder = null;
+  try{ resVideo.pause(); }catch(e){}
+  if(resURL){ try{ resVideo.removeAttribute("src"); }catch(e){} URL.revokeObjectURL(resURL); resURL = null; }
+  setStartNote("ready");
+  show("scr-start");
+}
+
+/* ============================================================
+   11. i18n 적용 / 이벤트 배선
+   ============================================================ */
+function applyI18n(){
+  document.documentElement.lang = LANG;
+  document.querySelectorAll("[data-i]").forEach(el => { el.textContent = T(el.dataset.i); });
+  document.querySelectorAll("[data-ih]").forEach(el => { el.innerHTML = T(el.dataset.ih); });
+  langBtn.textContent = LANG === "ko" ? "EN" : "한국어";
+  startNote.textContent = startNoteKey ? T(startNoteKey) : "";
+  startNote.classList.toggle("warn", startNoteWarn);
+  resNote.textContent = resNoteKey ? T(resNoteKey) : "";
+  const miss = $("#vidMiss"); if(miss) miss.textContent = T("noRec");
+  if($("#scr-result").classList.contains("on")) renderResultTexts();
+  document.title = LANG === "ko" ? "안 웃기 챌린지" : "Don't Laugh Challenge";
+}
+langBtn.addEventListener("click", ()=>{ LANG = LANG === "ko" ? "en" : "ko"; applyI18n(); });
+
+document.querySelectorAll(".tier").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    diff = b.dataset.diff;
+    document.querySelectorAll(".tier").forEach(x=>x.setAttribute("aria-pressed", String(x === b)));
+  });
+});
+startBtn.addEventListener("click", start);
+$("#shareBtn").addEventListener("click", doShare);
+$("#saveBtn").addEventListener("click", ()=>{ if(saveBlob()) setResNote("saved"); else setResNote("noRec"); });
+$("#againBtn").addEventListener("click", ()=>{ try{ resVideo.pause(); }catch(e){} start(); });
+$("#homeBtn").addEventListener("click", goHome);
+resVideo.addEventListener("click", ()=>{ resVideo.muted = false; resVideo.play().catch(()=>{}); });
+
+/* 탭을 벗어나면 감지가 멈추므로 얼굴 실종 타이머가 알아서 '도망' 처리한다 */
+window.addEventListener("pagehide", ()=>{ if(phase!=="idle" && phase!=="done") stopMedia(); });
+
+applyI18n();
+setStartNote("ready");
+ctx.fillStyle = C.deep; ctx.fillRect(0,0,W,H);
+</script>
+</body>
+</html>
