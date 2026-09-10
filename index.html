@@ -218,10 +218,13 @@ const STR = {
     t_easy:"봐줌", t_easy_d:"웬만해선 안 걸림", 
     t_normal:"보통", t_normal_d:"적당히 빡셈",
     t_hard:"빡셈", t_hard_d:"입꼬리만 올려도 아웃",
-    start:"시작하기", loadingModel:"얼굴 인식 모델 불러오는 중…", asking:"카메라 권한 확인 중…",
+    start:"시작하기", loadingModel:"얼굴 인식 모델 불러오는 중…", asking:"카메라 권한을 확인해 주세요…",
+    prep:"얼굴 인식 준비 중…",
     privacy:"카메라·마이크 권한이 필요합니다. 영상은 전부 이 기기 안에서만 처리되고 어디로도 전송되지 않습니다.",
     ready:"3초 카운트다운 동안 평소 표정을 재서 기준을 잡습니다.",
-    err_denied:"카메라 권한이 거부되었습니다. 브라우저 주소창의 자물쇠 아이콘에서 권한을 허용한 뒤 다시 시도해 주세요.",
+    err_denied:"카메라 권한이 거부되었습니다. 팝업에서 ‘허용’을 눌러 주세요.",
+    err_blocked:"이 사이트의 카메라 권한이 ‘차단’으로 저장돼 있습니다. 주소창의 자물쇠(또는 ⓘ) 아이콘 → 카메라를 ‘허용’으로 바꾸고 새로고침해 주세요.",
+    err_insecure:"카메라는 https 주소에서만 쓸 수 있습니다. 주소가 https:// 로 시작하는지 확인해 주세요.",
     err_nodev:"사용할 수 있는 카메라를 찾지 못했습니다.",
     err_busy:"다른 앱이 카메라를 쓰고 있습니다. 종료 후 다시 시도해 주세요.",
     err_model:"얼굴 인식 모델을 불러오지 못했습니다. 네트워크를 확인하고 새로고침해 주세요.",
@@ -261,10 +264,13 @@ const STR = {
     t_easy:"EASY", t_easy_d:"Hard to trip up",
     t_normal:"NORMAL", t_normal_d:"Fairly strict",
     t_hard:"BRUTAL", t_hard_d:"A twitch ends it",
-    start:"START", loadingModel:"Loading face model…", asking:"Requesting camera…",
+    start:"START", loadingModel:"Loading face model…", asking:"Waiting for camera permission…",
+    prep:"Getting the face model ready…",
     privacy:"Camera and microphone access is required. Everything is processed on this device and nothing is uploaded.",
     ready:"The 3s countdown measures your resting face to set a baseline.",
-    err_denied:"Camera permission was denied. Allow it from the lock icon in the address bar and try again.",
+    err_denied:"Camera permission was denied. Choose “Allow” in the prompt.",
+    err_blocked:"This site's camera permission is saved as Blocked. Open the lock (or ⓘ) icon in the address bar, set Camera to Allow, then reload.",
+    err_insecure:"The camera only works over https. Check that the address starts with https://.",
     err_nodev:"No usable camera was found.",
     err_busy:"Another app is using the camera. Close it and try again.",
     err_model:"Could not load the face model. Check your connection and reload.",
@@ -362,6 +368,12 @@ function txt(c,s,x,y,font,fill,align="center",baseline="middle",stroke=null,lw=8
    ============================================================ */
 let ac=null, sfxBus=null, recDest=null, micNode=null, noiseBuffer=null;
 
+function unlockAudio(){
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if(!AC) return;
+  if(!ac) ac = new AC();
+  if(ac.state === "suspended"){ try{ ac.resume(); }catch(e){} }
+}
 function initAudio(micStream){
   const AC = window.AudioContext || window.webkitAudioContext;
   if(!AC) return;
@@ -935,6 +947,25 @@ function renderCountdown(now){
   drawWatermark();
 }
 
+function renderLoading(now){
+  ctx.fillStyle = C.deep;  ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = C.panel; ctx.fillRect(0,0,W,SR_H);
+  ctx.save();
+  ctx.translate(360, 236); ctx.lineWidth = 12; ctx.lineCap = "round";
+  ctx.strokeStyle = "rgba(30,71,64,1)";
+  ctx.beginPath(); ctx.arc(0,0,100,0,Math.PI*2); ctx.stroke();
+  ctx.strokeStyle = C.amber;
+  const a = now/380;
+  ctx.beginPath(); ctx.arc(0,0,100,a,a+1.9); ctx.stroke();
+  ctx.restore();
+  const fs = fitFont(T("prep"), 620, BODY, 30);
+  txt(ctx, T("prep"), 360, 404, fs.toFixed(1)+'px '+BODY, C.cream);
+  txt(ctx, diffName()+" · "+sens().toFixed(2), 360, 462, '22px '+BODY, "rgba(122,148,144,.85)");
+  drawCam(ctx, 0, CAM_Y, CAM_S, CAM_S, 1);
+  ctx.fillStyle = C.line; ctx.fillRect(0, CAM_Y-4, W, 4);
+  drawWatermark();
+}
+
 function drawFail(now){
   const p = clamp((now - failStart)/FAIL_MS, 0, 1);
   /* 스냅샷의 카메라 영역만 9:16 커버 크롭으로 채우며 천천히 푸시인 */
@@ -1066,6 +1097,7 @@ function loop(now){
 
   pollFace(now);
 
+  if(phase === "loading"){ renderLoading(now); return; }
   if(phase === "countdown"){ stepCountdown(now); }
   if(phase === "countdown"){ renderCountdown(now); return; }
   if(phase === "play"){ renderPlay(now, dt); judge(now); return; }
@@ -1248,52 +1280,85 @@ async function getStream(){
     return await navigator.mediaDevices.getUserMedia({ video:v, audio:false });
   }
 }
+async function showCamError(e){
+  const n = (e && e.name) || "";
+  let key;
+  if(n === "NotFoundError" || n === "OverconstrainedError" || n === "DevicesNotFoundError") key = "err_nodev";
+  else if(n === "NotReadableError" || n === "AbortError" || n === "TrackStartError")        key = "err_busy";
+  else if(n === "NotAllowedError" || n === "PermissionDeniedError")                          key = "err_denied";
+  else if(n === "SecurityError" || window.isSecureContext === false)                         key = "err_insecure";
+  else key = "";
+
+  /* 브라우저에 '차단'으로 저장돼 있으면 팝업 자체가 안 뜬다 → 그에 맞는 안내 */
+  if(key === "err_denied" && navigator.permissions && navigator.permissions.query){
+    try{
+      const st = await navigator.permissions.query({ name:"camera" });
+      if(st && st.state === "denied") key = "err_blocked";
+    }catch(err){}
+  }
+  if(key) setStartNote(key, true);
+  else{
+    setStartNote("", true);
+    startNote.textContent = T("err_generic") + (n ? n + ": " : "") + ((e && e.message) || e);
+  }
+  startBtn.disabled = false;
+  show("scr-start");
+}
+
 async function start(){
-  if(phase === "countdown" || phase === "play" || phase === "fail") return;
+  if(phase === "loading" || phase === "countdown" || phase === "play" || phase === "fail") return;
   startBtn.disabled = true;
   resultShown = false; recBlob = null; chunks = [];
-
-  setStartNote("loadingModel");
-  try{ await loadModel(); }
-  catch(e){ setStartNote("err_model", true); startBtn.disabled = false; return; }
-
-  await fontsReady();               // 웹폰트가 준비돼야 캔버스 텍스트가 제대로 그려진다
-
   setStartNote("asking");
+
+  /* ── 여기부터 첫 await 전까지는 클릭 제스처(user activation)가 살아 있다 ──
+     getUserMedia 를 await 뒤로 미루면 Safari/iOS 는 권한 팝업조차 띄우지 않고
+     바로 NotAllowedError 를 던진다. 모델 로딩은 권한을 받은 뒤에 한다. */
+  unlockAudio();
+  const streamP = getStream();
+  /* ──────────────────────────────────────────────────────────────────── */
+
   let stream;
-  try{
-    stream = await getStream();     // getUserMedia는 반드시 시작 버튼 클릭 이후
-  }catch(e){
-    const n = e && e.name;
-    setStartNote(n === "NotAllowedError" || n === "SecurityError" ? "err_denied"
-               : n === "NotFoundError" || n === "OverconstrainedError" ? "err_nodev"
-               : n === "NotReadableError" || n === "AbortError" ? "err_busy"
-               : "err_denied", true);
-    if(!(n==="NotAllowedError"||n==="SecurityError"||n==="NotFoundError"||n==="OverconstrainedError"||n==="NotReadableError"||n==="AbortError")){
-      startNote.textContent = T("err_generic") + (e && e.message ? e.message : e);
-    }
-    startBtn.disabled = false;
-    show("scr-start");
-    return;
-  }
+  try{ stream = await streamP; }
+  catch(e){ await showCamError(e); return; }
 
   mediaStream = stream;
   cam.srcObject = stream;
   cam.muted = true; cam.playsInline = true;
   try{ await cam.play(); }catch(e){}
+
+  /* 카메라 미리보기를 먼저 띄워 두고 그 뒤에서 모델/폰트를 받는다 */
+  phase = "loading";
+  show("scr-game");
+  startBtn.disabled = false;
+  lastT = performance.now();
+  if(!raf) raf = requestAnimationFrame(loop);
+
   await waitVideo();
+  if(phase !== "loading") return;
+
+  await fontsReady();               // 웹폰트가 준비돼야 캔버스 텍스트가 제대로 그려진다
+  if(phase !== "loading") return;
+
+  try{ await loadModel(); }
+  catch(e){
+    if(phase !== "loading") return;
+    if(raf){ cancelAnimationFrame(raf); raf = 0; }
+    phase = "idle"; stopMedia();
+    setStartNote("err_model", true);
+    show("scr-start");
+    return;
+  }
+  if(phase !== "loading") return;
 
   initAudio(stream);
   setupRecorder();
-
   setStartNote("ready");
-  startBtn.disabled = false;
-  show("scr-game");
   beginCountdown();
 }
 function goHome(){
   if(raf){ cancelAnimationFrame(raf); raf = 0; }
-  phase = "idle";
+  phase = "idle";        // 진행 중이던 loading 단계도 이 검사로 중단된다
   stopMedia();
   if(recorder && recorder.state === "recording"){ try{ recorder.stop(); }catch(e){} }
   recorder = null;
