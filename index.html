@@ -103,6 +103,16 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:0;background:none
 .ghost:active{transform:scale(.975)}
 .ghost:hover{border-color:var(--amber)}
 
+.memebox{border:1.5px solid var(--line);background:var(--panel);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.memehead{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.memelabel{font-family:"Black Han Sans",sans-serif;font-size:17px;color:var(--cream)}
+.memecount{font-size:11.5px;color:var(--muted);text-align:right}
+.thumbs{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+.thumbs:empty{display:none}
+.thumbs img{width:46px;height:46px;object-fit:cover;border-radius:9px;border:1px solid var(--line);flex:0 0 auto;background:var(--deep)}
+.memebtns{display:grid;grid-template-columns:1fr auto;gap:8px}
+.memebtns .ghost{padding:11px 14px;font-size:13px}
+#picker{display:none}
 .note{margin:0;font-size:12.5px;line-height:1.6;color:var(--muted);min-height:1.6em}
 .note.warn{color:var(--red);font-weight:700}
 .tiny{margin:0;font-size:11px;line-height:1.6;color:rgba(122,148,144,.7)}
@@ -177,6 +187,19 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:0;background:none
         <span class="tn" data-i="t_hard"></span><span class="td" data-i="t_hard_d"></span><span class="tv">0.11</span>
       </button>
     </div>
+    <div class="memebox">
+      <div class="memehead">
+        <span class="memelabel" data-i="memeTitle"></span>
+        <span class="memecount" id="memeCount"></span>
+      </div>
+      <div class="thumbs" id="thumbs"></div>
+      <div class="memebtns">
+        <button id="addMeme" class="ghost" type="button" data-i="addMeme"></button>
+        <button id="clrMeme" class="ghost" type="button" data-i="clrMeme"></button>
+      </div>
+      <p class="tiny" data-i="memeHint"></p>
+    </div>
+    <input type="file" id="picker" accept="image/*" multiple>
     <button id="startBtn" class="cta" type="button" data-i="start"></button>
     <p class="note" id="startNote"></p>
     <p class="tiny" data-i="privacy"></p>
@@ -227,6 +250,11 @@ const STR = {
     t_hard:"빡셈", t_hard_d:"입꼬리만 올려도 아웃",
     start:"시작하기", loadingModel:"얼굴 인식 모델 불러오는 중…", asking:"카메라 권한을 확인해 주세요…",
     prep:"얼굴 인식 준비 중…",
+    memeTitle:"내 짤", addMeme:"짤 추가", clrMeme:"비우기",
+    memeNone:"아직 없음 · 기본 짤로 진행",
+    memeCount:n=>`${n}장 등록됨`,
+    memeAdding:"짤 넣는 중…",
+    memeHint:"넣은 이미지가 자극 화면에 그대로 나옵니다. 이 기기에만 저장되고 어디로도 전송되지 않습니다.",
     privacy:"카메라·마이크 권한이 필요합니다. 영상은 전부 이 기기 안에서만 처리되고 어디로도 전송되지 않습니다.",
     ready:"3초 카운트다운 동안 평소 표정을 재서 기준을 잡습니다.",
     err_denied:"카메라 권한이 거부되었습니다. 팝업에서 ‘허용’을 눌러 주세요.",
@@ -276,6 +304,11 @@ const STR = {
     t_hard:"BRUTAL", t_hard_d:"A twitch ends it",
     start:"START", loadingModel:"Loading face model…", asking:"Waiting for camera permission…",
     prep:"Getting the face model ready…",
+    memeTitle:"MY MEMES", addMeme:"ADD MEMES", clrMeme:"CLEAR",
+    memeNone:"None yet · using built-ins",
+    memeCount:n=>`${n} loaded`,
+    memeAdding:"Adding…",
+    memeHint:"Your images become the on-screen distractions. They stay on this device and are never uploaded.",
     privacy:"Camera and microphone access is required. Everything is processed on this device and nothing is uploaded.",
     ready:"The 3s countdown measures your resting face to set a baseline.",
     err_denied:"Camera permission was denied. Choose “Allow” in the prompt.",
@@ -579,265 +612,483 @@ function drawCam(c, dx, dy, dw, dh, zoom){
 }
 
 /* ============================================================
-   5. 자극 12종 — 전부 캔버스에 직접 그린다 (외부 이미지 없음)
+   5. 짤 소스 — 직접 넣은 이미지가 있으면 그걸 쓰고, 없으면 기본 짤
    ============================================================ */
-const EMO_FACE = ["😂","🤣","😹","🤪","🥴","🙃","🫠","🤡","👺","👽","🐸","🐷","🦆","🐔","💩","🥸","😜","🫡","🐧","🐥","🦖","🐙","🤠","🐒"];
+const EMO_FACE = ["😂","🤣","😹","🤪","🥴","🙃","🫠","🤡","👺","👽","🐸","🐷","🦆","🐔","💩","🥸","😜","🫡","🐧","🐥","🦖","🐙","🤠","🐒","🗿","💀","🙈","🤨","😳","🥲"];
 const EMO_RAIN = ["😂","🤣","💩","🍌","🐸","🤡","🧦","🍕","👽","🐙","🐔","🦆","🥴","🙃","🫠","🤪","🐷","🐧","🧀","🥑","🐥","🦖","😹","👺","🥸","🤠"];
 
-let ss = {};              // 현재 자극의 로컬 상태
+/* 자극별 자막 풀 (밈 자막 감성) */
+const CAPS = {
+  ko:[["두둥","등장","철컹철컹"], ["이거 실화냐","기습","!!!"], ["＜의심＞","동공지진","뚫어져라"],
+      ["단체 등장","우르르","삐약삐약"], ["안녕히 계세요","탈출각","슝—"], ["물량 공세","우르르 쾅쾅","폭격"],
+      ["스윽…","슬금슬금","뒤에 뭐 있음"], ["쭈욱","납작","말랑말랑"], ["긴급 속보","비상","삐용삐용"],
+      ["신호 불량","영혼 이탈","와르르"], ["여기 주목","표정 보소","클로즈업"], ["그만 알아보자","펑","레전드"]],
+  en:[["OH NO","HERE WE GO","BRUH"], ["NO WAY","AMBUSH","!!!"], ["SUS","STARING","BLINK TWICE"],
+      ["THE SQUAD","STAMPEDE","QUACK"], ["I'M OUT","YEET","BYE"], ["INCOMING","IT'S RAINING","BOMBARDMENT"],
+      ["SNEAKING…","BEHIND YOU","SLOWLY…"], ["STRETCH","SQUISH","BOING"], ["BREAKING NEWS","EMERGENCY","WEE WOO"],
+      ["BAD SIGNAL","SOUL LEAVING","GLITCH"], ["LOOK HERE","THE FACE","EXTREME CLOSE-UP"], ["NOT THE BEES","BOOM","LEGENDARY"]]
+};
+const capFor = i => pick((CAPS[LANG] || CAPS.ko)[i] || CAPS.ko[0]);
+
+/* ---- 짤 저장소 (IndexedDB) ---- */
+const DB_NAME = "dontlaugh", DB_STORE = "memes", MAX_MEMES = 60;
+let imgPool = [];                       // {img, ar, url}
+
+function idb(){
+  return new Promise((res,rej)=>{
+    if(!window.indexedDB) return rej(new Error("no indexedDB"));
+    const r = indexedDB.open(DB_NAME, 1);
+    r.onupgradeneeded = ()=>{ if(!r.result.objectStoreNames.contains(DB_STORE)) r.result.createObjectStore(DB_STORE,{keyPath:"id",autoIncrement:true}); };
+    r.onsuccess = ()=>res(r.result);
+    r.onerror   = ()=>rej(r.error);
+  });
+}
+function tx(db, mode){ return db.transaction(DB_STORE, mode).objectStore(DB_STORE); }
+async function dbAll(){
+  try{ const db = await idb();
+    return await new Promise((res,rej)=>{ const q = tx(db,"readonly").getAll(); q.onsuccess=()=>res(q.result||[]); q.onerror=()=>rej(q.error); });
+  }catch(e){ return []; }
+}
+async function dbAdd(blob){
+  try{ const db = await idb();
+    await new Promise((res,rej)=>{ const q = tx(db,"readwrite").add({blob}); q.onsuccess=()=>res(); q.onerror=()=>rej(q.error); });
+  }catch(e){}
+}
+async function dbClear(){
+  try{ const db = await idb();
+    await new Promise((res,rej)=>{ const q = tx(db,"readwrite").clear(); q.onsuccess=()=>res(); q.onerror=()=>rej(q.error); });
+  }catch(e){}
+}
+
+/* 저장 전에 긴 변 720px 으로 줄여 둔다 (메모리/용량) */
+async function shrink(file, max=720){
+  let src = null, w = 0, h = 0;
+  try{
+    if(window.createImageBitmap){ src = await createImageBitmap(file); w = src.width; h = src.height; }
+  }catch(e){ src = null; }
+  if(!src){
+    const u = URL.createObjectURL(file);
+    src = await new Promise((res)=>{ const im = new Image(); im.onload=()=>res(im); im.onerror=()=>res(null); im.src=u; });
+    if(!src){ URL.revokeObjectURL(u); return null; }
+    w = src.naturalWidth; h = src.naturalHeight;
+    setTimeout(()=>URL.revokeObjectURL(u), 0);
+  }
+  if(!w || !h) return null;
+  const s  = Math.min(1, max/Math.max(w,h));
+  const cw = Math.max(1, Math.round(w*s)), ch = Math.max(1, Math.round(h*s));
+  const cv = document.createElement("canvas"); cv.width = cw; cv.height = ch;
+  cv.getContext("2d").drawImage(src, 0, 0, cw, ch);
+  if(src.close) try{ src.close(); }catch(e){}
+  return await new Promise(r=>cv.toBlob(r, "image/jpeg", 0.86));
+}
+function blobToImg(blob){
+  return new Promise(res=>{
+    const u = URL.createObjectURL(blob);
+    const im = new Image();
+    im.onload  = ()=>res({ img:im, ar:(im.naturalWidth/im.naturalHeight)||1, url:u });
+    im.onerror = ()=>{ URL.revokeObjectURL(u); res(null); };
+    im.src = u;
+  });
+}
+async function loadPool(){
+  const rows = await dbAll();
+  const out = [];
+  for(const r of rows.slice(0, MAX_MEMES)){
+    if(!r || !r.blob) continue;
+    const it = await blobToImg(r.blob);
+    if(it) out.push(it);
+  }
+  imgPool = out;
+  renderThumbs();
+}
+async function addFiles(list){
+  const files = Array.from(list||[]).filter(f=>/^image\//.test(f.type)).slice(0, MAX_MEMES);
+  if(!files.length) return;
+  setStartNote("memeAdding");
+  for(const f of files){
+    if(imgPool.length >= MAX_MEMES) break;
+    const b = await shrink(f);
+    if(!b) continue;
+    await dbAdd(b);
+    const it = await blobToImg(b);
+    if(it) imgPool.push(it);
+    renderThumbs();
+  }
+  setStartNote("ready");
+}
+function renderThumbs(){
+  const box = $("#thumbs"); if(!box) return;
+  box.innerHTML = "";
+  for(const it of imgPool.slice(0, 24)){
+    const im = document.createElement("img");
+    im.src = it.url; im.alt = ""; box.appendChild(im);
+  }
+  const c = $("#memeCount");
+  if(c) c.textContent = imgPool.length ? STR[LANG].memeCount(imgPool.length) : T("memeNone");
+  const clr = $("#clrMeme");
+  if(clr) clr.style.display = imgPool.length ? "" : "none";
+}
+
+/* ---- 자극이 쓰는 '피사체' : 내 짤 또는 기본 이모지 ---- */
+function pickSubject(){
+  if(imgPool.length && Math.random() < 0.9) return { it: pick(imgPool) };
+  return { e: pick(EMO_FACE) };
+}
+function drawSubject(c, s, x, y, size, rot=0, sx=1, sy=1, alpha=1){
+  if(s && s.it){
+    const ar = s.it.ar || 1;
+    const w = ar >= 1 ? size : size*ar;
+    const h = ar >= 1 ? size/ar : size;
+    c.save(); c.globalAlpha = alpha;
+    c.translate(x,y); if(rot) c.rotate(rot); if(sx!==1||sy!==1) c.scale(sx,sy);
+    try{
+      c.drawImage(s.it.img, -w/2, -h/2, w, h);
+      c.lineWidth = Math.max(3, size*0.018); c.strokeStyle = "rgba(11,31,29,.85)";
+      c.strokeRect(-w/2, -h/2, w, h);
+    }catch(e){}
+    c.restore();
+  }else{
+    emo(c, (s && s.e) || "😂", x, y, size, rot, sx, sy, alpha);
+  }
+}
+
+/* ---- 밈 자막 / 데코 ---- */
+function capBig(c, s, x, y, size, tilt){
+  if(!s) return;
+  c.save(); c.translate(x,y); if(tilt) c.rotate(tilt);
+  c.font = size+'px '+HEAD; c.textAlign = "center"; c.textBaseline = "middle";
+  c.lineJoin = "round"; c.miterLimit = 2;
+  c.lineWidth = size*0.28; c.strokeStyle = "#0A0A0A"; c.strokeText(s,0,0);
+  c.fillStyle = "#FFE24A"; c.fillText(s,0,0);
+  c.restore();
+}
+function capSub(c, s, y){
+  if(!s) return;
+  const size = 44;
+  c.save();
+  c.font = size+'px '+HEAD; c.textAlign = "center"; c.textBaseline = "middle";
+  const w = c.measureText(s).width + 52;
+  c.fillStyle = "rgba(0,0,0,.6)"; rrect(c, 360-w/2, y-34, w, 68, 12); c.fill();
+  c.lineJoin = "round"; c.lineWidth = 10; c.strokeStyle = "#000"; c.strokeText(s,360,y);
+  c.fillStyle = "#FFFFFF"; c.fillText(s,360,y);
+  c.restore();
+}
+function redCircle(c, x, y, rx, ry, t){
+  c.save(); c.strokeStyle = "#FF2D1F"; c.lineWidth = 12; c.lineCap = "round";
+  c.beginPath();
+  for(let i=0;i<=46;i++){
+    const a = i/46*Math.PI*2*1.09 - 0.5;
+    const wob = 1 + Math.sin(a*3 + t*2.2)*0.04;
+    const px = x + Math.cos(a)*rx*wob, py = y + Math.sin(a)*ry*wob;
+    i ? c.lineTo(px,py) : c.moveTo(px,py);
+  }
+  c.stroke(); c.restore();
+}
+function redArrow(c, x1,y1,x2,y2){
+  c.save(); c.strokeStyle = "#FF2D1F"; c.fillStyle = "#FF2D1F"; c.lineWidth = 12; c.lineCap = "round";
+  c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke();
+  const a = Math.atan2(y2-y1, x2-x1);
+  c.beginPath(); c.moveTo(x2,y2);
+  c.lineTo(x2-Math.cos(a-0.42)*40, y2-Math.sin(a-0.42)*40);
+  c.lineTo(x2-Math.cos(a+0.42)*40, y2-Math.sin(a+0.42)*40);
+  c.closePath(); c.fill(); c.restore();
+}
+const mcv = document.createElement("canvas"), mctx = mcv.getContext("2d");
+function mosaic(c, x,y,w,h, cell){
+  const sw = Math.max(1, Math.round(w/cell)), sh = Math.max(1, Math.round(h/cell));
+  mcv.width = sw; mcv.height = sh;
+  try{ mctx.drawImage(c.canvas, x,y,w,h, 0,0,sw,sh); }catch(e){ return; }
+  c.save(); c.imageSmoothingEnabled = false;
+  try{ c.drawImage(mcv, 0,0,sw,sh, x,y,w,h); }catch(e){}
+  c.imageSmoothingEnabled = true; c.restore();
+}
+/* 딥프라이드 밈 느낌: 과채도 + 성긴 노이즈 */
+function deepFry(c, amt){
+  if(amt <= 0) return;
+  c.save();
+  c.globalCompositeOperation = "overlay";
+  c.fillStyle = "rgba(255,120,0,"+(0.38*amt)+")"; c.fillRect(0,0,SR.w,SR.h);
+  c.globalCompositeOperation = "hard-light";
+  c.fillStyle = "rgba(255,0,0,"+(0.2*amt)+")";   c.fillRect(0,0,SR.w,SR.h);
+  c.globalCompositeOperation = "source-over";
+  c.globalAlpha = 0.12*amt;
+  for(let i=0;i<64;i++){ c.fillStyle = i%2 ? "#fff" : "#000"; c.fillRect(Math.random()*SR.w, Math.random()*SR.h, 4, 4); }
+  c.restore();
+}
+
+/* ============================================================
+   5b. 자극 12종 (순서·동작은 그대로, 내용만 밈으로)
+   ============================================================ */
+let ss = {};
 const SR = { w:W, h:SR_H };
 
-/* 1. 흔들리는 이모지 */
+/* 1. 흔들리는 짤 */
 const st1 = {
-  init(){ ss.e = pick(EMO_FACE); ss.hue = rnd(0,360); },
+  init(){ ss.s = pickSubject(); ss.cap = capFor(0); },
   draw(t){
     ctx.fillStyle = C.panel; ctx.fillRect(0,0,SR.w,SR.h);
-    const g = ctx.createRadialGradient(360,280,20,360,280,340);
-    g.addColorStop(0,"rgba(255,176,32,.18)"); g.addColorStop(1,"rgba(255,176,32,0)");
-    ctx.fillStyle=g; ctx.fillRect(0,0,SR.w,SR.h);
-    const x = 360 + Math.sin(t*17.5)*78;
-    const s = 1 + Math.sin(t*9.3)*0.14;
-    const rot = Math.sin(t*13)*0.16;
-    emo(ctx, ss.e, x, 285, 300, rot, s, s);
+    const g = ctx.createRadialGradient(360,250,20,360,250,340);
+    g.addColorStop(0,"rgba(255,176,32,.2)"); g.addColorStop(1,"rgba(255,176,32,0)");
+    ctx.fillStyle = g; ctx.fillRect(0,0,SR.w,SR.h);
+    const x = 360 + Math.sin(t*17.5)*78, sc = 1 + Math.sin(t*9.3)*0.14;
+    drawSubject(ctx, ss.s, x, 248, 300, Math.sin(t*13)*0.16, sc, sc);
+    capBig(ctx, ss.cap, 360, 486, 82, Math.sin(t*6)*0.045);
   }
 };
 /* 2. 작았다가 화면 꽉 채우며 돌진 + 흰 플래시 */
 const st2 = {
-  init(){ ss.e=pick(EMO_FACE); ss.k=-1; },
+  init(){ ss.s = pickSubject(); ss.k = -1; ss.cap = capFor(1); },
   draw(t){
-    ctx.fillStyle="#08160F"; ctx.fillRect(0,0,SR.w,SR.h);
-    const per=1.55, p=(t%per)/per, k=Math.floor(t/per);
-    if(k!==ss.k){ ss.k=k; ss.e=pick(EMO_FACE); }
-    // 속도선
-    ctx.save(); ctx.translate(360,280); ctx.strokeStyle="rgba(245,238,221,.10)"; ctx.lineWidth=3;
-    for(let i=0;i<22;i++){ const a=i/22*Math.PI*2+t*0.4;
+    ctx.fillStyle = "#08160F"; ctx.fillRect(0,0,SR.w,SR.h);
+    const per = 1.55, p = (t%per)/per, k = Math.floor(t/per);
+    if(k !== ss.k){ ss.k = k; ss.s = pickSubject(); ss.cap = capFor(1); }
+    ctx.save(); ctx.translate(360,280); ctx.strokeStyle = "rgba(245,238,221,.1)"; ctx.lineWidth = 3;
+    for(let i=0;i<22;i++){ const a = i/22*Math.PI*2 + t*0.4;
       ctx.beginPath(); ctx.moveTo(Math.cos(a)*120,Math.sin(a)*120); ctx.lineTo(Math.cos(a)*560,Math.sin(a)*560); ctx.stroke(); }
     ctx.restore();
     const s = 0.05 + Math.pow(p,4.2)*4.6;
-    emo(ctx, ss.e, 360, 285, 160, Math.sin(t*3)*0.08, s, s);
-    if(p>0.90){
-      if(!ss.hit){ ss.hit=true; sfx("boom",0.9); }
-      ctx.fillStyle = "rgba(255,255,255,"+((p-0.90)/0.10*0.95)+")";
-      ctx.fillRect(0,0,SR.w,SR.h);
-    } else if(p<0.5) ss.hit=false;
+    drawSubject(ctx, ss.s, 360, 285, 190, Math.sin(t*3)*0.08, s, s);
+    if(p > 0.9){
+      if(!ss.hit){ ss.hit = true; sfx("boom",0.9); }
+      const q = (p-0.9)/0.1;
+      deepFry(ctx, 1-q);
+      ctx.fillStyle = "rgba(255,255,255,"+(q*0.95)+")"; ctx.fillRect(0,0,SR.w,SR.h);
+      capBig(ctx, ss.cap, 360, 280, 118, 0);
+    }else if(p < 0.5) ss.hit = false;
   }
 };
 /* 3. 거대한 눈알 두 개 (도형) */
 const st3 = {
-  init(){ ss.gx=0; ss.gy=0; ss.tx=0; ss.ty=0; ss.next=0; ss.blink=0; ss.nb=1.4; },
+  init(){ ss.gx=0; ss.gy=0; ss.tx=0; ss.ty=0; ss.next=0; ss.blink=0; ss.nb=1.4; ss.cap=capFor(2); },
   draw(t,dt){
-    ctx.fillStyle="#0E2622"; ctx.fillRect(0,0,SR.w,SR.h);
-    if(t>ss.next){ ss.next=t+rnd(0.7,1.5); ss.tx=rnd(-1,1); ss.ty=rnd(-.8,.8); }
-    ss.gx=lerp(ss.gx,ss.tx,Math.min(1,dt*3.2)); ss.gy=lerp(ss.gy,ss.ty,Math.min(1,dt*3.2));
-    if(t>ss.nb){ ss.nb=t+rnd(1.1,2.8); ss.blink=1; }
-    ss.blink=Math.max(0,ss.blink-dt*7.5);
-    const lid = Math.sin(Math.min(1,ss.blink)*Math.PI);   // 0→1→0
-    const eye=(cx)=>{
-      const rx=152, ry=118*(1-lid*0.94);
+    ctx.fillStyle = "#0E2622"; ctx.fillRect(0,0,SR.w,SR.h);
+    if(t > ss.next){ ss.next = t+rnd(0.7,1.5); ss.tx = rnd(-1,1); ss.ty = rnd(-.8,.8); }
+    ss.gx = lerp(ss.gx, ss.tx, Math.min(1,dt*3.2)); ss.gy = lerp(ss.gy, ss.ty, Math.min(1,dt*3.2));
+    if(t > ss.nb){ ss.nb = t+rnd(1.1,2.8); ss.blink = 1; }
+    ss.blink = Math.max(0, ss.blink-dt*7.5);
+    const lid = Math.sin(Math.min(1,ss.blink)*Math.PI);
+    const eye = (cx)=>{
+      const rx = 152, ry = 118*(1-lid*0.94);
       ctx.save();
-      ctx.fillStyle="#F7F3E6"; ctx.beginPath(); ctx.ellipse(cx,285,rx,Math.max(2,ry),0,0,7); ctx.fill();
-      ctx.strokeStyle="#0B1F1D"; ctx.lineWidth=9; ctx.stroke();
-      if(ry>26){
-        ctx.beginPath(); ctx.ellipse(cx,285,rx-6,ry-4,0,0,7); ctx.clip();
-        const ix=cx+ss.gx*74, iy=285+ss.gy*54;
-        ctx.fillStyle="#7A4A1B"; ctx.beginPath(); ctx.arc(ix,iy,62,0,7); ctx.fill();
-        ctx.fillStyle="#0B1F1D"; ctx.beginPath(); ctx.arc(ix,iy,31,0,7); ctx.fill();
-        ctx.fillStyle="rgba(255,255,255,.9)"; ctx.beginPath(); ctx.arc(ix-20,iy-22,14,0,7); ctx.fill();
-        // 실핏줄
-        ctx.strokeStyle="rgba(255,59,47,.35)"; ctx.lineWidth=3;
-        for(let i=0;i<5;i++){ const a=i*1.3+t*0.2;
-          ctx.beginPath(); ctx.moveTo(cx+Math.cos(a)*rx,285+Math.sin(a)*ry);
-          ctx.quadraticCurveTo(cx+Math.cos(a)*80,285+Math.sin(a)*40, ix+Math.cos(a)*60, iy+Math.sin(a)*40); ctx.stroke(); }
+      ctx.fillStyle = "#F7F3E6"; ctx.beginPath(); ctx.ellipse(cx,262,rx,Math.max(2,ry),0,0,7); ctx.fill();
+      ctx.strokeStyle = "#0B1F1D"; ctx.lineWidth = 9; ctx.stroke();
+      if(ry > 26){
+        ctx.beginPath(); ctx.ellipse(cx,262,rx-6,ry-4,0,0,7); ctx.clip();
+        const ix = cx+ss.gx*74, iy = 262+ss.gy*54;
+        ctx.fillStyle = "#7A4A1B"; ctx.beginPath(); ctx.arc(ix,iy,62,0,7); ctx.fill();
+        ctx.fillStyle = "#0B1F1D"; ctx.beginPath(); ctx.arc(ix,iy,31,0,7); ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.beginPath(); ctx.arc(ix-20,iy-22,14,0,7); ctx.fill();
+        ctx.strokeStyle = "rgba(255,59,47,.35)"; ctx.lineWidth = 3;
+        for(let i=0;i<5;i++){ const a = i*1.3+t*0.2;
+          ctx.beginPath(); ctx.moveTo(cx+Math.cos(a)*rx, 262+Math.sin(a)*ry);
+          ctx.quadraticCurveTo(cx+Math.cos(a)*80, 262+Math.sin(a)*40, ix+Math.cos(a)*60, iy+Math.sin(a)*40); ctx.stroke(); }
       }
       ctx.restore();
     };
     eye(190); eye(530);
+    capSub(ctx, ss.cap, 486);
   }
 };
-/* 4. 오리들이 통통 튀며 가로질러 감 */
+/* 4. 짤들이 위아래로 통통 튀며 가로질러 감 */
 const st4 = {
   init(){
-    ss.d = Array.from({length:5},(_,i)=>({
+    ss.d = Array.from({length:5},()=>({
       x:rnd(-260,760), sp:rnd(120,235)*(Math.random()<.5?-1:1),
-      ph:rnd(0,6.3), sz:rnd(96,150), b:0, e:Math.random()<.25?"🐔":"🦆"
+      ph:rnd(0,6.3), sz:rnd(100,158), s:pickSubject()
     }));
-    ss.cool=0;
+    ss.cool = 0; ss.cap = capFor(3);
   },
   draw(t,dt){
-    ctx.fillStyle="#123B34"; ctx.fillRect(0,0,SR.w,SR.h);
-    ctx.fillStyle="rgba(255,176,32,.07)";
+    ctx.fillStyle = "#123B34"; ctx.fillRect(0,0,SR.w,SR.h);
+    ctx.fillStyle = "rgba(255,176,32,.07)";
     for(let i=0;i<6;i++) ctx.fillRect(0, i*95+20, SR.w, 42);
-    ss.cool-=dt;
+    ss.cool -= dt;
     for(const d of ss.d){
       d.x += d.sp*dt;
-      if(d.x>820) d.x=-140; if(d.x<-140) d.x=820;
+      if(d.x > 830) d.x = -150; if(d.x < -150) d.x = 830;
       const hop = Math.abs(Math.sin(t*4.4 + d.ph));
-      const y = 430 - hop*185;
+      const y  = 400 - hop*180;
       const sq = 1 + (1-hop)*0.16;
-      if(hop<0.06 && ss.cool<=0){ ss.cool=0.16; sfx("squeak",0.5); }
-      ctx.save(); ctx.globalAlpha=.25; ctx.fillStyle="#08160F";
-      ctx.beginPath(); ctx.ellipse(d.x, 470, d.sz*0.34*(1.1-hop*0.5), 12, 0,0,7); ctx.fill(); ctx.restore();
-      emo(ctx, d.e, d.x, y, d.sz, Math.sin(t*6+d.ph)*0.18, (d.sp<0?-1:1)/sq, sq);
+      if(hop < 0.06 && ss.cool <= 0){ ss.cool = 0.16; sfx("squeak",0.5); }
+      ctx.save(); ctx.globalAlpha = .25; ctx.fillStyle = "#08160F";
+      ctx.beginPath(); ctx.ellipse(d.x, 448, d.sz*0.34*(1.1-hop*0.5), 12, 0,0,7); ctx.fill(); ctx.restore();
+      drawSubject(ctx, d.s, d.x, y, d.sz, Math.sin(t*6+d.ph)*0.18, (d.sp<0?-1:1)/sq, sq);
     }
+    capSub(ctx, ss.cap, 502);
   }
 };
 /* 5. 점점 빨리 회전하다 화면 밖으로 날아감 */
 const st5 = {
-  init(){ ss.e=pick(EMO_FACE); ss.k=-1; },
+  init(){ ss.s = pickSubject(); ss.k = -1; ss.cap = capFor(4); },
   draw(t){
-    ctx.fillStyle="#10231F"; ctx.fillRect(0,0,SR.w,SR.h);
-    const per=3.4, p=(t%per)/per, k=Math.floor(t/per);
-    if(k!==ss.k){ ss.k=k; ss.e=pick(EMO_FACE); ss.ang=rnd(0,6.3); ss.flew=false; }
+    ctx.fillStyle = "#10231F"; ctx.fillRect(0,0,SR.w,SR.h);
+    const per = 3.4, p = (t%per)/per, k = Math.floor(t/per);
+    if(k !== ss.k){ ss.k = k; ss.s = pickSubject(); ss.cap = capFor(4); ss.ang = rnd(0,6.3); ss.flew = false; }
     const spin = Math.pow(p,2.4)*95;
-    let x=360, y=285, a=spin, s=1;
-    if(p>0.82){
-      const q=(p-0.82)/0.18;
-      if(!ss.flew){ ss.flew=true; sfx("slide",0.75); }
+    let x = 360, y = 262, s = 1;
+    if(p > 0.82){
+      const q = (p-0.82)/0.18;
+      if(!ss.flew){ ss.flew = true; sfx("slide",0.75); }
       x += Math.cos(ss.ang)*q*q*980; y += Math.sin(ss.ang)*q*q*980; s = 1+q*0.7;
     }
-    ctx.save(); ctx.globalAlpha=.35;
-    for(let i=1;i<=4;i++) emo(ctx, ss.e, 360, 285, 250, spin-i*0.35, 1,1, 0.12);
-    ctx.restore();
-    emo(ctx, ss.e, x, y, 250, a, s, s);
+    for(let i=1;i<=4;i++) drawSubject(ctx, ss.s, 360, 262, 250, spin-i*0.35, 1,1, 0.12);
+    drawSubject(ctx, ss.s, x, y, 250, spin, s, s);
+    capBig(ctx, ss.cap, 360, 492, 74, 0);
   }
 };
-/* 6. 이모지 26개가 비처럼 쏟아짐 */
+/* 6. 짤 26개가 비처럼 쏟아짐 */
 const st6 = {
   init(){
     ss.p = Array.from({length:26},()=>({
       x:rnd(0,SR.w), y:rnd(-620,SR.h), v:rnd(230,520),
-      s:rnd(52,112), r:rnd(0,6.3), vr:rnd(-3.4,3.4), e:pick(EMO_RAIN)
+      s:rnd(58,120), r:rnd(0,6.3), vr:rnd(-3.4,3.4),
+      sb: imgPool.length ? pickSubject() : { e:pick(EMO_RAIN) }
     }));
+    ss.cap = capFor(5);
   },
   draw(t,dt){
-    ctx.fillStyle="#0D2320"; ctx.fillRect(0,0,SR.w,SR.h);
+    ctx.fillStyle = "#0D2320"; ctx.fillRect(0,0,SR.w,SR.h);
     for(const p of ss.p){
       p.y += p.v*dt; p.r += p.vr*dt;
-      if(p.y > SR.h+90){ p.y=-90; p.x=rnd(0,SR.w); p.e=pick(EMO_RAIN); p.v=rnd(230,520); }
-      emo(ctx, p.e, p.x, p.y, p.s, p.r);
+      if(p.y > SR.h+100){ p.y = -100; p.x = rnd(0,SR.w); p.v = rnd(230,520);
+        p.sb = imgPool.length ? pickSubject() : { e:pick(EMO_RAIN) }; }
+      drawSubject(ctx, p.sb, p.x, p.y, p.s, p.r);
     }
+    capSub(ctx, ss.cap, 502);
   }
 };
 /* 7. 가장자리에서 아주 천천히 기어오다 마지막에 확 튀어나옴 */
 const st7 = {
-  init(){ ss.e=pick(EMO_FACE); ss.side=(Math.random()*4)|0; ss.k=-1; },
+  init(){ ss.s = pickSubject(); ss.side = (Math.random()*4)|0; ss.k = -1; ss.cap = capFor(6); },
   draw(t){
-    ctx.fillStyle="#0A1D1A"; ctx.fillRect(0,0,SR.w,SR.h);
-    const per=4.6, p=(t%per)/per, k=Math.floor(t/per);
-    if(k!==ss.k){ ss.k=k; ss.e=pick(EMO_FACE); ss.side=(Math.random()*4)|0; ss.pop=false; }
+    ctx.fillStyle = "#0A1D1A"; ctx.fillRect(0,0,SR.w,SR.h);
+    const per = 4.6, p = (t%per)/per, k = Math.floor(t/per);
+    if(k !== ss.k){ ss.k = k; ss.s = pickSubject(); ss.side = (Math.random()*4)|0; ss.pop = false; ss.cap = capFor(6); }
     const creep = Math.min(1, p/0.86);
     const ease  = easeIn(creep)*0.35 + creep*0.65;
     let x,y;
-    if(ss.side===0){ x=-150+ease*330; y=285+Math.sin(t*3)*18; }
-    else if(ss.side===1){ x=870-ease*330; y=285+Math.sin(t*3)*18; }
-    else if(ss.side===2){ x=360+Math.sin(t*3)*24; y=-150+ease*300; }
-    else { x=360+Math.sin(t*3)*24; y=710-ease*300; }
-    let s=1;
-    if(p>0.86){
-      const q=(p-0.86)/0.14;
-      if(!ss.pop){ ss.pop=true; sfx("honk",1); }
-      x=lerp(x,360,easeOut(q)); y=lerp(y,285,easeOut(q)); s=1+easeOut(q)*1.5;
-      ctx.fillStyle="rgba(255,59,47,"+(0.3*(1-q))+")"; ctx.fillRect(0,0,SR.w,SR.h);
+    if(ss.side === 0){ x = -150+ease*330; y = 262+Math.sin(t*3)*18; }
+    else if(ss.side === 1){ x = 870-ease*330; y = 262+Math.sin(t*3)*18; }
+    else if(ss.side === 2){ x = 360+Math.sin(t*3)*24; y = -150+ease*290; }
+    else { x = 360+Math.sin(t*3)*24; y = 690-ease*290; }
+    let s = 1;
+    if(p > 0.86){
+      const q = (p-0.86)/0.14;
+      if(!ss.pop){ ss.pop = true; sfx("honk",1); }
+      x = lerp(x,360,easeOut(q)); y = lerp(y,262,easeOut(q)); s = 1+easeOut(q)*1.5;
+      ctx.fillStyle = "rgba(255,59,47,"+(0.3*(1-q))+")"; ctx.fillRect(0,0,SR.w,SR.h);
     }
-    emo(ctx, ss.e, x, y, 230, Math.sin(t*2)*0.1, s, s);
+    drawSubject(ctx, ss.s, x, y, 230, Math.sin(t*2)*0.1, s, s);
+    if(p <= 0.86) capSub(ctx, ss.cap, 502);
+    else capBig(ctx, ss.cap, 360, 492, 96, 0);
   }
 };
 /* 8. 세로로 극단적으로 늘어났다 가로로 납작해짐 */
 const st8 = {
-  init(){ ss.e=pick(EMO_FACE); ss.last=-1; },
+  init(){ ss.s = pickSubject(); ss.last = -1; ss.cap = capFor(7); },
   draw(t){
-    ctx.fillStyle="#14332E"; ctx.fillRect(0,0,SR.w,SR.h);
-    const per=1.25, p=(t%per)/per;
-    const w = Math.sin(p*Math.PI*2);
+    ctx.fillStyle = "#14332E"; ctx.fillRect(0,0,SR.w,SR.h);
+    const per = 1.25, p = (t%per)/per;
+    const w  = Math.sin(p*Math.PI*2);
     const sy = 1 + Math.max(0, w)*2.35;
     const sx = 1 + Math.max(0,-w)*2.35;
     const kk = Math.floor(t/(per/2));
-    if(kk!==ss.last){ ss.last=kk; sfx("boing",0.6); }
-    emo(ctx, ss.e, 360, 285, 210, 0, sx/Math.sqrt(sy), sy/Math.sqrt(sx));
+    if(kk !== ss.last){ ss.last = kk; sfx("boing",0.6); }
+    drawSubject(ctx, ss.s, 360, 262, 210, 0, sx/Math.sqrt(sy), sy/Math.sqrt(sx));
+    capSub(ctx, ss.cap, 502);
   }
 };
-/* 9. 배경 빨강/노랑 점멸 + 사이렌 이모지 진동 */
+/* 9. 배경 빨강/노랑 점멸 + 긴급속보 */
 const st9 = {
-  init(){ ss.last=-1; },
+  init(){ ss.last = -1; ss.cap = capFor(8); ss.s = pickSubject(); },
   draw(t){
     const f = Math.floor(t*9)%2;
     ctx.fillStyle = f ? "#FF3B2F" : "#FFB020";
     ctx.fillRect(0,0,SR.w,SR.h);
-    ctx.fillStyle="rgba(0,0,0,.12)";
+    ctx.fillStyle = "rgba(0,0,0,.12)";
     for(let i=0;i<9;i++) ctx.fillRect(0, i*64+((t*220)%64), SR.w, 22);
-    const kk=Math.floor(t*1.6);
-    if(kk!==ss.last){ ss.last=kk; sfx("honk",0.55); }
-    const jx=Math.sin(t*46)*13, jy=Math.cos(t*39)*11;
-    emo(ctx,"🚨",190+jx,285+jy,190, Math.sin(t*20)*0.2);
-    emo(ctx,"🚨",530-jx,285-jy,190,-Math.sin(t*20)*0.2);
-    txt(ctx, f?"!!!":"???", 360, 470, '84px '+HEAD, "#0B1F1D");
+    const kk = Math.floor(t*1.6);
+    if(kk !== ss.last){ ss.last = kk; sfx("honk",0.55); }
+    const jx = Math.sin(t*46)*13, jy = Math.cos(t*39)*11;
+    emo(ctx,"🚨",96+jx,150+jy,120, Math.sin(t*20)*0.2);
+    emo(ctx,"🚨",624-jx,150-jy,120,-Math.sin(t*20)*0.2);
+    drawSubject(ctx, ss.s, 360, 250, 240, Math.sin(t*9)*0.06, 1, 1);
+    /* 속보 자막바 */
+    ctx.fillStyle = "#0A0A0A"; ctx.fillRect(0, 430, SR.w, 78);
+    ctx.fillStyle = "#FF2D1F"; ctx.fillRect(0, 430, 172, 78);
+    txt(ctx, LANG==="ko"?"속보":"LIVE", 86, 470, '40px '+HEAD, "#fff");
+    txt(ctx, ss.cap, 190, 470, '42px '+HEAD, "#FFE24A", "left");
   }
 };
 /* 10. 라이브 웹캠 가로 슬라이스 26개 물결 왜곡 */
 const st10 = {
-  init(){ ss.amp=0; },
+  init(){ ss.amp = 0; ss.cap = capFor(9); },
   draw(t,dt){
-    ctx.fillStyle="#08160F"; ctx.fillRect(0,0,SR.w,SR.h);
+    ctx.fillStyle = "#08160F"; ctx.fillRect(0,0,SR.w,SR.h);
     const r = videoCoverRect(SR.w, SR.h, 1);
     if(!r) return;
     ss.amp = lerp(ss.amp, 78, Math.min(1,dt*1.4));
-    const N=26, dh=SR.h/N, sh=r.sh/N;
+    const N = 26, dh = SR.h/N, sh = r.sh/N;
     ctx.save();
-    ctx.translate(SR.w,0); ctx.scale(-1,1);      // 거울
+    ctx.translate(SR.w,0); ctx.scale(-1,1);
     for(let i=0;i<N;i++){
       const off = Math.sin(t*4.1 + i*0.62)*ss.amp*(0.45+0.55*Math.sin(i*0.31+t*1.1));
       const sq  = 1 + Math.sin(t*2.7 + i*0.4)*0.14;
-      try{
-        ctx.drawImage(cam, r.sx, r.sy+sh*i, r.sw, sh,
-                      off, dh*i, SR.w*sq, dh+1.2);
-      }catch(e){}
+      try{ ctx.drawImage(cam, r.sx, r.sy+sh*i, r.sw, sh, off, dh*i, SR.w*sq, dh+1.2); }catch(e){}
     }
     ctx.restore();
-    ctx.fillStyle="rgba(255,176,32,.07)"; ctx.fillRect(0,0,SR.w,SR.h);
+    ctx.fillStyle = "rgba(255,176,32,.07)"; ctx.fillRect(0,0,SR.w,SR.h);
+    capSub(ctx, ss.cap, 494);
   }
 };
-/* 11. 라이브 웹캠 3배 확대 */
+/* 11. 라이브 웹캠 3배 확대 + 빨간 동그라미/화살표 (클로즈업 짤 문법) */
 const st11 = {
-  init(){ ss.z=1.6; },
+  init(){ ss.z = 1.6; ss.cap = capFor(10); ss.mos = 0; ss.nm = rnd(1.6,2.6); },
   draw(t,dt){
-    ctx.fillStyle="#08160F"; ctx.fillRect(0,0,SR.w,SR.h);
+    ctx.fillStyle = "#08160F"; ctx.fillRect(0,0,SR.w,SR.h);
     ss.z = lerp(ss.z, 3, Math.min(1,dt*1.5));
     const z = ss.z + Math.sin(t*2.3)*0.14;
     ctx.save();
     ctx.translate(Math.sin(t*3.1)*10, Math.cos(t*2.4)*8);
     drawCam(ctx, 0, 0, SR.w, SR.h, z);
     ctx.restore();
-    ctx.fillStyle="rgba(255,59,47,"+(0.05+0.05*Math.sin(t*6))+")"; ctx.fillRect(0,0,SR.w,SR.h);
-    const g=ctx.createRadialGradient(360,280,150,360,280,430);
+    if(t > ss.nm){ ss.nm = t+rnd(1.6,3); ss.mos = 0.5; }
+    if(ss.mos > 0){ ss.mos -= dt; mosaic(ctx, 210, 130, 300, 200, 26); }
+    ctx.fillStyle = "rgba(255,59,47,"+(0.05+0.05*Math.sin(t*6))+")"; ctx.fillRect(0,0,SR.w,SR.h);
+    const g = ctx.createRadialGradient(360,250,150,360,250,430);
     g.addColorStop(0,"rgba(0,0,0,0)"); g.addColorStop(1,"rgba(0,0,0,.55)");
-    ctx.fillStyle=g; ctx.fillRect(0,0,SR.w,SR.h);
+    ctx.fillStyle = g; ctx.fillRect(0,0,SR.w,SR.h);
+    redCircle(ctx, 360, 236, 178, 148, t);
+    redArrow(ctx, 640, 70, 508, 168);
+    capBig(ctx, ss.cap, 360, 486, 82, -0.03);
   }
 };
 /* 12. 아주 작아졌다가 폭발하듯 커짐 */
 const st12 = {
-  init(){ ss.e=pick(EMO_FACE); ss.k=-1; },
+  init(){ ss.s = pickSubject(); ss.k = -1; ss.cap = capFor(11); },
   draw(t){
-    ctx.fillStyle="#0B211D"; ctx.fillRect(0,0,SR.w,SR.h);
-    const per=1.9, p=(t%per)/per, k=Math.floor(t/per);
-    if(k!==ss.k){ ss.k=k; ss.e=pick(EMO_FACE); ss.bang=false; }
+    ctx.fillStyle = "#0B211D"; ctx.fillRect(0,0,SR.w,SR.h);
+    const per = 1.9, p = (t%per)/per, k = Math.floor(t/per);
+    if(k !== ss.k){ ss.k = k; ss.s = pickSubject(); ss.bang = false; ss.cap = capFor(11); }
     let s;
-    if(p<0.72){ s = lerp(0.62,0.05,easeOut(p/0.72)); }
-    else {
-      const q=(p-0.72)/0.28;
-      if(!ss.bang){ ss.bang=true; sfx("boom",0.8); }
+    if(p < 0.72){ s = lerp(0.62, 0.05, easeOut(p/0.72)); }
+    else{
+      const q = (p-0.72)/0.28;
+      if(!ss.bang){ ss.bang = true; sfx("boom",0.8); }
       s = 0.05 + easeOut(q)*3.1;
-      ctx.save(); ctx.translate(360,285); ctx.strokeStyle="rgba(255,176,32,"+(1-q)+")"; ctx.lineWidth=9;
-      for(let i=0;i<16;i++){ const a=i/16*6.283;
-        ctx.beginPath(); ctx.moveTo(Math.cos(a)*(60+q*250),Math.sin(a)*(60+q*250));
-        ctx.lineTo(Math.cos(a)*(120+q*420),Math.sin(a)*(120+q*420)); ctx.stroke(); }
+      ctx.save(); ctx.translate(360,262); ctx.strokeStyle = "rgba(255,176,32,"+(1-q)+")"; ctx.lineWidth = 9;
+      for(let i=0;i<16;i++){ const a = i/16*6.283;
+        ctx.beginPath(); ctx.moveTo(Math.cos(a)*(60+q*250), Math.sin(a)*(60+q*250));
+        ctx.lineTo(Math.cos(a)*(120+q*420), Math.sin(a)*(120+q*420)); ctx.stroke(); }
       ctx.restore();
     }
-    emo(ctx, ss.e, 360, 285, 220, 0, s, s);
+    drawSubject(ctx, ss.s, 360, 262, 220, 0, s, s);
+    if(p > 0.72){ deepFry(ctx, (p-0.72)/0.28); capBig(ctx, ss.cap, 360, 492, 92, 0); }
   }
 };
 
 const STIMS = [st1,st2,st3,st4,st5,st6,st7,st8,st9,st10,st11,st12];
-let bag=[], curStim=null, stimStart=0, stimDur=0;
+let bag = [], curStim = null, stimStart = 0, stimDur = 0;
 
 function nextStim(now){
   if(!bag.length) bag = shuffle(STIMS.map((_,i)=>i));
@@ -1185,7 +1436,7 @@ const startBtn=$("#startBtn"), startNote=$("#startNote"), resNote=$("#resNote"),
 let startNoteKey = "ready", startNoteWarn = false, resNoteKey = "";
 let micDenied = false, permState = "", lastErr = "";
 
-const BUILD = "b4";     // 어떤 빌드가 떠 있는지 눈으로 확인하기 위한 스탬프
+const BUILD = "b5";     // 어떤 빌드가 떠 있는지 눈으로 확인하기 위한 스탬프
 function inFrame(){ try{ return window.self !== window.top; }catch(e){ return true; } }
 function renderDiag(){
   const d = $("#diag"); if(!d) return;
@@ -1458,6 +1709,7 @@ function applyI18n(){
   startNote.classList.toggle("warn", startNoteWarn);
   resNote.textContent = resNoteKey ? T(resNoteKey) : "";
   const miss = $("#vidMiss"); if(miss) miss.textContent = T("noRec");
+  renderThumbs();
   renderDiag();
   if($("#scr-result").classList.contains("on")) renderResultTexts();
   document.title = LANG === "ko" ? "안 웃기 챌린지" : "Don't Laugh Challenge";
@@ -1471,6 +1723,14 @@ document.querySelectorAll(".tier").forEach(b=>{
   });
 });
 startBtn.addEventListener("click", start);
+$("#addMeme").addEventListener("click", ()=>{ $("#picker").click(); });
+$("#picker").addEventListener("change", e=>{ addFiles(e.target.files); e.target.value = ""; });
+$("#clrMeme").addEventListener("click", async ()=>{
+  for(const it of imgPool){ try{ URL.revokeObjectURL(it.url); }catch(e){} }
+  imgPool = [];
+  await dbClear();
+  renderThumbs();
+});
 $("#shareBtn").addEventListener("click", doShare);
 $("#saveBtn").addEventListener("click", ()=>{ if(saveBlob()) setResNote("saved"); else setResNote("noRec"); });
 $("#againBtn").addEventListener("click", ()=>{ try{ resVideo.pause(); }catch(e){} start(); });
@@ -1483,6 +1743,7 @@ window.addEventListener("pagehide", ()=>{ if(phase!=="idle" && phase!=="done") s
 applyI18n();
 setStartNote("ready");
 refreshPerm();
+loadPool();
 ctx.fillStyle = C.deep; ctx.fillRect(0,0,W,H);
 </script>
 </body>
