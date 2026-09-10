@@ -46,7 +46,7 @@ npx wrangler d1 execute dontlaugh --remote \
 
 ## 진단 줄 읽는 법
 
-시작 화면 맨 아래에 `b9 · https · secure · top · gum:y · rec:y · drip:server` 같은
+시작 화면 맨 아래에 `c1 · https · secure · top · gum:y · rec:y · drip:server` 같은
 한 줄이 있습니다.
 
 - `c1` — 배포된 빌드
