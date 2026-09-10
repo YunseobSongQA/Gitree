@@ -106,6 +106,12 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:0;background:none
 .note{margin:0;font-size:12.5px;line-height:1.6;color:var(--muted);min-height:1.6em}
 .note.warn{color:var(--red);font-weight:700}
 .tiny{margin:0;font-size:11px;line-height:1.6;color:rgba(122,148,144,.7)}
+.diag{
+  margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:10.5px;line-height:1.5;letter-spacing:.02em;
+  color:rgba(122,148,144,.55);word-break:break-all;user-select:all;
+}
+.diag.bad{color:var(--red)}
 
 /* ---------- game ---------- */
 #scr-game{background:var(--deep)}
@@ -174,6 +180,7 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:0;background:none
     <button id="startBtn" class="cta" type="button" data-i="start"></button>
     <p class="note" id="startNote"></p>
     <p class="tiny" data-i="privacy"></p>
+    <p class="diag" id="diag"></p>
   </div>
 </section>
 
@@ -225,6 +232,9 @@ const STR = {
     err_denied:"카메라 권한이 거부되었습니다. 팝업에서 ‘허용’을 눌러 주세요.",
     err_blocked:"이 사이트의 카메라 권한이 ‘차단’으로 저장돼 있습니다. 주소창의 자물쇠(또는 ⓘ) 아이콘 → 카메라를 ‘허용’으로 바꾸고 새로고침해 주세요.",
     err_insecure:"카메라는 https 주소에서만 쓸 수 있습니다. 주소가 https:// 로 시작하는지 확인해 주세요.",
+    err_iframe:"페이지가 다른 사이트 안에 삽입돼 있어 카메라를 쓸 수 없습니다. 주소를 새 탭에서 직접 열어 주세요.",
+    err_boot:"시작 중 오류가 발생했습니다: ",
+    noMic:"마이크 없이 진행합니다. 녹화 영상에 목소리는 안 들어갑니다.",
     err_nodev:"사용할 수 있는 카메라를 찾지 못했습니다.",
     err_busy:"다른 앱이 카메라를 쓰고 있습니다. 종료 후 다시 시도해 주세요.",
     err_model:"얼굴 인식 모델을 불러오지 못했습니다. 네트워크를 확인하고 새로고침해 주세요.",
@@ -271,6 +281,9 @@ const STR = {
     err_denied:"Camera permission was denied. Choose “Allow” in the prompt.",
     err_blocked:"This site's camera permission is saved as Blocked. Open the lock (or ⓘ) icon in the address bar, set Camera to Allow, then reload.",
     err_insecure:"The camera only works over https. Check that the address starts with https://.",
+    err_iframe:"This page is embedded in another site, so the camera is blocked. Open the address directly in a new tab.",
+    err_boot:"Something went wrong while starting: ",
+    noMic:"Running without a microphone. Your voice will not be in the clip.",
     err_nodev:"No usable camera was found.",
     err_busy:"Another app is using the camera. Close it and try again.",
     err_model:"Could not load the face model. Check your connection and reload.",
@@ -369,10 +382,13 @@ function txt(c,s,x,y,font,fill,align="center",baseline="middle",stroke=null,lw=8
 let ac=null, sfxBus=null, recDest=null, micNode=null, noiseBuffer=null;
 
 function unlockAudio(){
-  const AC = window.AudioContext || window.webkitAudioContext;
-  if(!AC) return;
-  if(!ac) ac = new AC();
-  if(ac.state === "suspended"){ try{ ac.resume(); }catch(e){} }
+  /* 여기서 예외가 새어 나가면 getUserMedia 까지 못 가고 아무 일도 안 일어난다 */
+  try{
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return;
+    if(!ac) ac = new AC();
+    if(ac.state === "suspended") ac.resume();
+  }catch(e){ console.warn("[audio]", e); }
 }
 function initAudio(micStream){
   const AC = window.AudioContext || window.webkitAudioContext;
@@ -1167,6 +1183,36 @@ function onRecordingDone(){
 const startBtn=$("#startBtn"), startNote=$("#startNote"), resNote=$("#resNote"),
       langBtn=$("#langBtn"), vidWrap=$("#vidWrap");
 let startNoteKey = "ready", startNoteWarn = false, resNoteKey = "";
+let micDenied = false, permState = "", lastErr = "";
+
+const BUILD = "b4";     // 어떤 빌드가 떠 있는지 눈으로 확인하기 위한 스탬프
+function inFrame(){ try{ return window.self !== window.top; }catch(e){ return true; } }
+function renderDiag(){
+  const d = $("#diag"); if(!d) return;
+  const p = [
+    BUILD,
+    (location.protocol || "?").replace(":",""),
+    window.isSecureContext === false ? "INSECURE" : "secure",
+    inFrame() ? "IFRAME" : "top",
+    "gum:" + (navigator.mediaDevices && navigator.mediaDevices.getUserMedia ? "y" : "N"),
+    "rec:" + (window.MediaRecorder ? "y" : "N")
+  ];
+  if(permState) p.push("cam:" + permState);
+  if(micDenied) p.push("mic:off");
+  if(lastErr)   p.push("err:" + lastErr);
+  d.textContent = p.join(" · ");
+  d.classList.toggle("bad", !!lastErr);
+}
+async function refreshPerm(){
+  if(navigator.permissions && navigator.permissions.query){
+    try{
+      const st = await navigator.permissions.query({ name:"camera" });
+      permState = st && st.state || "";
+      if(st && "onchange" in st) st.onchange = ()=>{ permState = st.state; renderDiag(); };
+    }catch(e){ permState = ""; }
+  }
+  renderDiag();
+}
 
 function show(id){
   document.querySelectorAll(".screen").forEach(s => s.classList.toggle("on", s.id === id));
@@ -1275,9 +1321,17 @@ async function getStream(){
   try{
     return await navigator.mediaDevices.getUserMedia({ video:v, audio:true });
   }catch(e){
-    if(e && e.name === "NotAllowedError") throw e;
-    /* 마이크가 없거나 점유 중이면 비디오만으로 재시도 */
-    return await navigator.mediaDevices.getUserMedia({ video:v, audio:false });
+    /* 마이크가 없거나 차단돼 있으면 카메라+마이크 동시 요청은 팝업조차 없이
+       NotAllowedError 로 죽는다. 카메라만으로 한 번 더 시도한다. */
+    console.warn("[gum] video+audio failed:", e && e.name, e && e.message);
+    try{
+      const s2 = await navigator.mediaDevices.getUserMedia({ video:v, audio:false });
+      micDenied = true;
+      return s2;
+    }catch(e2){
+      console.warn("[gum] video-only failed:", e2 && e2.name, e2 && e2.message);
+      throw (e2 && e2.name === "NotAllowedError") ? e : e2;
+    }
   }
 }
 async function showCamError(e){
@@ -1296,18 +1350,41 @@ async function showCamError(e){
       if(st && st.state === "denied") key = "err_blocked";
     }catch(err){}
   }
+  /* 다른 사이트에 iframe 으로 박혀 있으면 allow="camera" 없이는 무조건 막힌다 */
+  if((key === "err_denied" || key === "err_blocked") && inFrame()) key = "err_iframe";
+
+  lastErr = n || "unknown";
+  console.error("[camera]", n, e);
   if(key) setStartNote(key, true);
   else{
     setStartNote("", true);
     startNote.textContent = T("err_generic") + (n ? n + ": " : "") + ((e && e.message) || e);
+    startNote.classList.add("warn");
   }
+  renderDiag();
   startBtn.disabled = false;
   show("scr-start");
 }
 
 async function start(){
+  /* 여기서 무슨 예외가 나든 화면에 보이게 한다 (조용히 아무 일도 안 일어나는 것 방지) */
+  try{ await startInner(); }
+  catch(e){
+    lastErr = (e && e.name) || "boot";
+    console.error("[start]", e);
+    setStartNote("", true);
+    startNote.textContent = T("err_boot") + ((e && (e.name+": "+e.message)) || e);
+    startNote.classList.add("warn");
+    renderDiag();
+    startBtn.disabled = false;
+    show("scr-start");
+  }
+}
+async function startInner(){
   if(phase === "loading" || phase === "countdown" || phase === "play" || phase === "fail") return;
   startBtn.disabled = true;
+  lastErr = ""; micDenied = false;
+  setTimeout(()=>{ if(phase === "idle") startBtn.disabled = false; }, 8000);  // 팝업이 안 뜨면 다시 누를 수 있게
   resultShown = false; recBlob = null; chunks = [];
   setStartNote("asking");
 
@@ -1353,7 +1430,8 @@ async function start(){
 
   initAudio(stream);
   setupRecorder();
-  setStartNote("ready");
+  setStartNote(micDenied ? "noMic" : "ready");
+  refreshPerm();
   beginCountdown();
 }
 function goHome(){
@@ -1380,6 +1458,7 @@ function applyI18n(){
   startNote.classList.toggle("warn", startNoteWarn);
   resNote.textContent = resNoteKey ? T(resNoteKey) : "";
   const miss = $("#vidMiss"); if(miss) miss.textContent = T("noRec");
+  renderDiag();
   if($("#scr-result").classList.contains("on")) renderResultTexts();
   document.title = LANG === "ko" ? "안 웃기 챌린지" : "Don't Laugh Challenge";
 }
@@ -1403,6 +1482,7 @@ window.addEventListener("pagehide", ()=>{ if(phase!=="idle" && phase!=="done") s
 
 applyI18n();
 setStartNote("ready");
+refreshPerm();
 ctx.fillStyle = C.deep; ctx.fillRect(0,0,W,H);
 </script>
 </body>
