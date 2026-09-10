@@ -1,5 +1,5 @@
 -- DON'T SMILE · D1 스키마
--- 적용:  npx wrangler d1 execute dontlaugh --remote --file=schema.sql
+-- 적용:  npx wrangler d1 execute dontsmile --remote --file=schema.sql
 
 CREATE TABLE IF NOT EXISTS jokes (
   id      INTEGER PRIMARY KEY AUTOINCREMENT,
