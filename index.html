@@ -116,6 +116,59 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:0;background:none
 .diag.bad{color:var(--rose);opacity:.9}
 hr.rule{border:0;border-top:1px solid var(--line);margin:0}
 
+/* ---------- drip ---------- */
+.dripbtn{
+  position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;
+  background:var(--surf);border:1px solid var(--line);border-radius:18px;padding:16px 18px;text-align:left;
+  transition:border-color .2s,transform .15s;
+}
+.dripbtn:active{transform:translateY(1px)}
+.dripbtn:hover{border-color:var(--rose)}
+.dbmain{font-size:14px;font-weight:700;color:var(--ink)}
+.dbsub{font-size:11.5px;font-weight:300;color:var(--muted)}
+.badge{
+  position:absolute;top:14px;right:16px;min-width:20px;height:20px;border-radius:999px;
+  background:var(--rose);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center;padding:0 6px;
+}
+.wrap.top{justify-content:flex-start}
+.drophead{display:flex;align-items:center;gap:10px;margin-bottom:2px}
+.back{font-size:19px;color:var(--muted);padding:6px 10px;border-radius:999px;line-height:1}
+.back:hover{color:var(--rose)}
+.subtitle{font-family:"Gowun Batang",serif;font-weight:700;font-size:24px;margin:0;color:var(--ink)}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:9px}
+.field{
+  width:100%;border:1px solid var(--line);background:var(--bg);border-radius:13px;padding:13px 15px;
+  font-size:14px;font-family:inherit;font-weight:400;color:var(--ink);
+}
+.field::placeholder{color:var(--muted);opacity:.75}
+.field:focus{outline:none;border-color:var(--rose);background:var(--surf)}
+.row2{display:grid;grid-template-columns:92px 1fr;gap:8px}
+.emorow{display:flex;flex-wrap:wrap;gap:5px}
+.emobtn{font-size:19px;line-height:1;padding:6px;border-radius:10px;background:var(--bg);border:1px solid transparent}
+.emobtn:hover{border-color:var(--rose)}
+.mylist{display:flex;flex-direction:column;gap:8px}
+.drow{position:relative;background:var(--surf);border:1px solid var(--line);border-radius:18px;padding:14px 16px 30px}
+.dhead{display:block;width:100%;text-align:left}
+.dq{font-size:13px;font-weight:300;color:var(--muted);line-height:1.5;word-break:keep-all}
+.da{font-size:15px;font-weight:700;color:var(--ink);line-height:1.5;margin-top:2px;word-break:keep-all}
+.dmeta{font-size:10.5px;color:var(--muted);margin-top:7px;letter-spacing:.04em}
+.dot{position:absolute;top:14px;right:14px;width:8px;height:8px;border-radius:50%;background:var(--rose)}
+.dellink{position:absolute;bottom:9px;right:12px;font-size:10.5px;color:var(--muted);padding:4px 6px}
+.dellink:hover{color:var(--rose)}
+.jokecard{background:var(--surf);border:1px solid var(--line);border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:7px}
+.jklabel{font-size:10px;font-weight:500;letter-spacing:.22em;color:var(--muted);text-transform:uppercase}
+.jksetup{font-size:13.5px;font-weight:300;color:var(--muted);line-height:1.6;word-break:keep-all}
+.jkpunch{font-family:"Gowun Batang",serif;font-weight:700;font-size:20px;color:var(--rose);line-height:1.4;word-break:keep-all}
+.jkby{font-size:11px;color:var(--muted)}
+.jkby:empty{display:none}
+.jkrow{display:grid;grid-template-columns:1fr auto;gap:7px;margin-top:4px}
+.jkrow .ghost{padding:13px 16px;font-size:12.5px;white-space:nowrap}
+.cmlist{display:flex;flex-direction:column;gap:7px;margin-top:2px}
+.cmlist:empty{display:none}
+.cm{background:var(--bg);border-radius:13px;padding:11px 13px}
+.cmbody{font-size:13px;line-height:1.6;color:var(--ink);word-break:break-word}
+.cmmeta{font-size:10px;color:var(--muted);margin-top:4px;letter-spacing:.03em}
+
 /* ---------- game ---------- */
 #scr-game{background:var(--bg)}
 .stagewrap{
@@ -188,10 +241,41 @@ hr.rule{border:0;border-top:1px solid var(--line);margin:0}
     </div>
     <p class="tierdesc" id="tierDesc"></p>
     </div>
+    <button id="dripBtn" class="dripbtn" type="button">
+      <span class="dbmain" data-i="dripEntry"></span>
+      <span class="dbsub" id="dripSub"></span>
+      <span class="badge" id="dripBadge" hidden></span>
+    </button>
     <button id="startBtn" class="cta" type="button" data-i="start"></button>
     <p class="note" id="startNote"></p>
     <p class="tiny" data-i="privacy"></p>
     <p class="diag" id="diag"></p>
+  </div>
+</section>
+
+<!-- ================= DRIP ================= -->
+<section id="scr-drip" class="screen">
+  <div class="wrap top">
+    <div class="drophead">
+      <button id="dripBack" class="back" type="button" aria-label="back">&#8592;</button>
+      <h2 class="subtitle" data-i="dripTitle"></h2>
+    </div>
+    <div class="card">
+      <p class="seclabel" data-i="newDrip"></p>
+      <input id="dSetup" class="field" type="text" maxlength="60" data-ph="phSetup">
+      <input id="dPunch" class="field" type="text" maxlength="40" data-ph="phPunch">
+      <div class="row2">
+        <input id="dEmoji" class="field" type="text" maxlength="4" data-ph="phEmoji">
+        <input id="dNick"  class="field" type="text" maxlength="16" data-ph="phNick">
+      </div>
+      <div class="emorow" id="emoRow"></div>
+      <button id="dSubmit" class="cta" type="button" data-i="submitDrip"></button>
+      <p class="note" id="dNote"></p>
+    </div>
+    <div>
+      <p class="seclabel" data-i="myDrips"></p>
+      <div id="myList" class="mylist"></div>
+    </div>
   </div>
 </section>
 
@@ -208,6 +292,17 @@ hr.rule{border:0;border-top:1px solid var(--line);margin:0}
       <div class="restime"><span id="resTime">0.0</span><em data-i="sec"></em></div>
       <div class="resgrade" id="resGrade"></div>
       <div class="resmeta" id="resMeta"></div>
+    </div>
+    <div class="jokecard" id="jokeCard" hidden>
+      <div class="jklabel" data-i="brokeBy"></div>
+      <div class="jksetup" id="jkSetup"></div>
+      <div class="jkpunch"><span id="jkEmoji"></span> <span id="jkPunch"></span></div>
+      <div class="jkby" id="jkBy"></div>
+      <div class="jkrow">
+        <input id="jkInput" class="field" type="text" maxlength="140" data-ph="phComment">
+        <button id="jkSend" class="ghost" type="button" data-i="send"></button>
+      </div>
+      <div class="cmlist" id="jkComments"></div>
     </div>
     <div class="vidwrap" id="vidWrap">
       <video id="resVideo" playsinline controls loop></video>
@@ -238,6 +333,25 @@ const STR = {
     t_hard:"빡셈", t_hard_d:"입꼬리만 올려도 아웃",
     start:"시작하기", loadingModel:"얼굴 인식 모델 불러오는 중…", asking:"카메라 권한을 확인해 주세요…",
     prep:"얼굴 인식 준비 중…", diffLabel:"난이도",
+    dripEntry:"내 드립 등록하기",
+    dripSub:(n,u)=> u ? `내 드립 ${n}개 · 새 댓글 ${u}` : `내 드립 ${n}개`,
+    dripSubNone:"아직 없음 — 하나 올려보세요",
+    dripTitle:"드립", newDrip:"새 드립", myDrips:"내 드립",
+    phSetup:"밑밥 — 예) 세상에서 가장 추운 바다는?",
+    phPunch:"펀치라인 — 예) 썰렁해",
+    phEmoji:"이모지", phNick:"닉네임 (선택)",
+    phComment:"이 개그에 한마디",
+    submitDrip:"등록하기", send:"남기기", del:"삭제", anon:"익명",
+    noDrips:"아직 등록한 드립이 없습니다.",
+    noComments:"아직 댓글이 없습니다.",
+    needBoth:"밑밥과 펀치라인을 모두 써 주세요.",
+    dripOk:"등록했습니다. 이제 다른 사람 게임에도 나옵니다.",
+    dripLocal:"서버가 아직 연결되지 않아 이 기기에만 저장했습니다.",
+    cmOk:"댓글을 남겼습니다.",
+    cmLocal:"이 기기에만 저장했습니다. 서버가 붙으면 공유됩니다.",
+    brokeBy:"여기서 무너졌습니다",
+    laughs:n=>`${n}명이 웃음`,
+    cmCount:n=>`댓글 ${n}`,
     privacy:"카메라·마이크 권한이 필요합니다. 영상은 전부 이 기기 안에서만 처리되고 어디로도 전송되지 않습니다.",
     ready:"3초 카운트다운 동안 평소 표정을 재서 기준을 잡습니다.",
     err_denied:"카메라 권한이 거부되었습니다. 팝업에서 ‘허용’을 눌러 주세요.",
@@ -287,6 +401,25 @@ const STR = {
     t_hard:"BRUTAL", t_hard_d:"A twitch ends it",
     start:"START", loadingModel:"Loading face model…", asking:"Waiting for camera permission…",
     prep:"Getting the face model ready…", diffLabel:"Difficulty",
+    dripEntry:"SUBMIT YOUR OWN JOKE",
+    dripSub:(n,u)=> u ? `${n} submitted · ${u} new comment${u>1?"s":""}` : `${n} submitted`,
+    dripSubNone:"Nothing yet — send one in",
+    dripTitle:"Jokes", newDrip:"NEW JOKE", myDrips:"MY JOKES",
+    phSetup:"Set-up — e.g. What's the coldest sea?",
+    phPunch:"Punchline — e.g. The Chilly Sea",
+    phEmoji:"Emoji", phNick:"Nickname (optional)",
+    phComment:"Say something about this one",
+    submitDrip:"SUBMIT", send:"SEND", del:"Delete", anon:"anon",
+    noDrips:"You haven't submitted anything yet.",
+    noComments:"No comments yet.",
+    needBoth:"Fill in both lines.",
+    dripOk:"Submitted. It will show up in other people's games now.",
+    dripLocal:"Server isn't connected, so it was saved on this device only.",
+    cmOk:"Comment posted.",
+    cmLocal:"Saved on this device only. It will sync once the server is connected.",
+    brokeBy:"THIS ONE GOT YOU",
+    laughs:n=>`${n} laughed`,
+    cmCount:n=>`${n} comment${n===1?"":"s"}`,
     privacy:"Camera and microphone access is required. Everything is processed on this device and nothing is uploaded.",
     ready:"The 3s countdown measures your resting face to set a baseline.",
     err_denied:"Camera permission was denied. Choose “Allow” in the prompt.",
@@ -707,14 +840,23 @@ const JOKES = {
   ]
 };
 let jokeBag = [], jokeBagLang = "", joke = null, jokePunch = 2.2, jokeHit = false;
+/* [밑밥, 펀치라인, 이모지, 타깃id, 지은이] */
 function nextJoke(){
-  const pool = JOKES[LANG] || JOKES.ko;
-  /* 언어가 바뀌면 남은 인덱스는 다른 풀 것이므로 백을 새로 만든다 */
-  if(!jokeBag.length || jokeBagLang !== LANG){
-    jokeBag = shuffle(pool.map((_,i)=>i));
-    jokeBagLang = LANG;
+  /* 남들이 올린 드립을 40% 확률로 섞는다 */
+  if(userJokes.length && Math.random() < 0.4){
+    const u = pick(userJokes);
+    return [u.setup, u.punch, u.emoji || "🙂", "u" + u.id, u.nick || ""];
   }
-  return pool[jokeBag.pop()];
+  const lang = JOKES[LANG] ? LANG : "ko";
+  const pool = JOKES[lang];
+  /* 언어가 바뀌면 남은 인덱스는 다른 풀 것이므로 백을 새로 만든다 */
+  if(!jokeBag.length || jokeBagLang !== lang){
+    jokeBag = shuffle(pool.map((_,i)=>i));
+    jokeBagLang = lang;
+  }
+  const i = jokeBag.pop();
+  const j = pool[i];
+  return [j[0], j[1], j[2], "b_" + lang + "_" + i, ""];
 }
 
 /* ---- 직접 그리는 동물 (전부 도형, 외부 이미지 없음) ---- */
@@ -898,6 +1040,7 @@ function stimCap(t, y){
   const pop = 1 + Math.max(0, 1-age*5)*0.42;
   if(joke[2]) emo(ctx, joke[2], 360, y-82, 66*pop, Math.sin(age*8)*0.07);
   capBig(ctx, joke[1], 360, y, 72*pop, Math.sin(age*15)*0.022*Math.max(0,1-age*2.2), true);
+  if(joke[4]) txt(ctx, "— " + joke[4], 360, y+48, '400 22px '+BODY, C.muted);
 }
 function redCircle(c, x, y, rx, ry, t){
   c.save(); c.strokeStyle = "#E0697A"; c.lineWidth = 12; c.lineCap = "round";
@@ -1473,6 +1616,8 @@ function triggerFail(now, reason){
   if(phase !== "play") return;
   phase = "fail"; failReason = reason; failStart = now; failDone = false;
   finalMs = Math.max(0, now - playStart);
+  failJoke = joke;
+  if(reason === "laugh" && joke && joke[3]) DRIP.laugh(joke[3]);
   snapCv = document.createElement("canvas");
   snapCv.width = W; snapCv.height = H;
   try{ snapCv.getContext("2d").drawImage(stage, 0, 0); }catch(e){ snapCv = null; }
@@ -1569,7 +1714,7 @@ const startBtn=$("#startBtn"), startNote=$("#startNote"), resNote=$("#resNote"),
 let startNoteKey = "ready", startNoteWarn = false, resNoteKey = "";
 let micDenied = false, permState = "", lastErr = "";
 
-const BUILD = "b8";     // 어떤 빌드가 떠 있는지 눈으로 확인하기 위한 스탬프
+const BUILD = "b9";     // 어떤 빌드가 떠 있는지 눈으로 확인하기 위한 스탬프
 function inFrame(){ try{ return window.self !== window.top; }catch(e){ return true; } }
 function renderDiag(){
   const d = $("#diag"); if(!d) return;
@@ -1579,7 +1724,8 @@ function renderDiag(){
     window.isSecureContext === false ? "INSECURE" : "secure",
     inFrame() ? "IFRAME" : "top",
     "gum:" + (navigator.mediaDevices && navigator.mediaDevices.getUserMedia ? "y" : "N"),
-    "rec:" + (window.MediaRecorder ? "y" : "N")
+    "rec:" + (window.MediaRecorder ? "y" : "N"),
+    "drip:" + (apiOn ? "server" : "local")
   ];
   if(permState) p.push("cam:" + permState);
   if(micDenied) p.push("mic:off");
@@ -1621,6 +1767,7 @@ function renderResultTexts(){
 }
 function showResult(){
   renderResultTexts();
+  renderJokeCard();
   if(resURL){ URL.revokeObjectURL(resURL); resURL = null; }
   const miss = $("#vidMiss");
   if(recBlob && recBlob.size){
@@ -1816,6 +1963,7 @@ async function startInner(){
   setupRecorder();
   setStartNote(micDenied ? "noMic" : "ready");
   refreshPerm();
+pingApi().then(loadFeed).then(renderMyDrips);
   beginCountdown();
 }
 function goHome(){
@@ -1830,6 +1978,270 @@ function goHome(){
   show("scr-start");
 }
 
+
+/* ============================================================
+   12. 드립 — 등록 / 랜덤 노출 / 댓글
+   서버(D1)가 붙어 있으면 모두와 공유하고, 없으면 이 기기 안에서만 돈다.
+   ============================================================ */
+const LS = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+const ME = (()=>{
+  let id = LS.get("dl_uid", "");
+  if(!/^[a-z0-9]{12,64}$/.test(String(id))){
+    id = (Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2))
+           .replace(/[^a-z0-9]/g, "").slice(0, 24);
+    while(id.length < 16) id += "0";
+    LS.set("dl_uid", id);
+  }
+  return id;
+})();
+let myNick  = LS.get("dl_nick", "") || "";
+let apiOn   = false;
+let userJokes = [];        // 피드에서 받아온 남들 드립
+let myDrips   = [];        // 내가 올린 드립
+let failJoke  = null;      // 무너진 순간 떠 있던 개그
+
+async function api(path, opts){
+  const r = await fetch("/api/" + path, Object.assign({ headers:{ "content-type":"application/json" } }, opts || {}));
+  let data = null;
+  try{ data = await r.json(); }catch(e){}
+  if(!r.ok) throw new Error((data && data.error) || ("HTTP " + r.status));
+  return data || {};
+}
+async function pingApi(){
+  try{ await api("ping"); apiOn = true; }
+  catch(e){ apiOn = false; }
+  renderDiag();
+  return apiOn;
+}
+function apiDown(){ apiOn = false; renderDiag(); }
+
+/* 서버가 없을 때 쓰는 기기 내 저장소 */
+const localJokes       = ()=> LS.get("dl_jokes", []);
+const setLocalJokes    = a => LS.set("dl_jokes", a);
+const localComments    = ()=> LS.get("dl_comments", {});
+const setLocalComments = o => LS.set("dl_comments", o);
+
+const DRIP = {
+  async feed(){
+    if(apiOn){
+      try{ return (await api("feed?lang=" + LANG + "&limit=40")).jokes || []; }
+      catch(e){ apiDown(); }
+    }
+    return localJokes().filter(j => j.lang === LANG);
+  },
+  async submit(j){
+    if(apiOn){
+      const r = await api("jokes", { method:"POST", body: JSON.stringify(Object.assign({ author:ME }, j)) });
+      return { id:r.id, remote:true };
+    }
+    const arr = localJokes();
+    const id  = arr.reduce((m,x)=>Math.max(m, x.id || 0), 0) + 1;
+    arr.unshift(Object.assign({ id, laughs:0, created:Date.now() }, j));
+    setLocalJokes(arr);
+    return { id, remote:false };
+  },
+  async mine(){
+    if(apiOn){
+      try{ return (await api("mine?author=" + encodeURIComponent(ME))).jokes || []; }
+      catch(e){ apiDown(); }
+    }
+    const cm = localComments();
+    return localJokes().map(j => {
+      const list = cm["u" + j.id] || [];
+      return Object.assign({}, j, {
+        comments: list.length,
+        last_comment: list.length ? list[list.length-1].id : 0
+      });
+    });
+  },
+  async comments(target){
+    if(apiOn){
+      try{ return (await api("comments?target=" + encodeURIComponent(target))).comments || []; }
+      catch(e){ apiDown(); }
+    }
+    return (localComments()[target] || []).slice().reverse();
+  },
+  async comment(target, body){
+    if(apiOn){
+      await api("comments", { method:"POST", body: JSON.stringify({ target, body, nick:myNick, author:ME }) });
+      return true;
+    }
+    const cm = localComments();
+    const list = cm[target] || (cm[target] = []);
+    list.push({ id:list.length + 1, body, nick:myNick, created:Date.now() });
+    setLocalComments(cm);
+    return false;
+  },
+  async remove(id){
+    if(apiOn){ await api("delete", { method:"POST", body: JSON.stringify({ id, author:ME }) }); return; }
+    setLocalJokes(localJokes().filter(j => j.id !== id));
+    const cm = localComments(); delete cm["u" + id]; setLocalComments(cm);
+  },
+  async laugh(target){
+    if(!apiOn) return;
+    try{ await api("laugh", { method:"POST", body: JSON.stringify({ target }) }); }catch(e){}
+  }
+};
+
+async function loadFeed(){
+  try{ userJokes = await DRIP.feed(); }catch(e){ userJokes = []; }
+}
+
+/* ---------- 표시 ---------- */
+function fmtWhen(ts){
+  const d = Math.max(0, Date.now() - (ts || 0));
+  const m = Math.floor(d/60000), h = Math.floor(m/60), day = Math.floor(h/24);
+  if(LANG === "ko") return day ? day + "일 전" : h ? h + "시간 전" : m ? m + "분 전" : "방금";
+  return day ? day + "d ago" : h ? h + "h ago" : m ? m + "m ago" : "just now";
+}
+function renderComments(box, list){
+  box.innerHTML = "";
+  if(!list.length){
+    const p = document.createElement("p");
+    p.className = "tiny"; p.textContent = T("noComments");
+    box.appendChild(p); return;
+  }
+  for(const c of list){
+    const el = document.createElement("div"); el.className = "cm";
+    const b  = document.createElement("div"); b.className = "cmbody"; b.textContent = c.body;
+    const m  = document.createElement("div"); m.className = "cmmeta";
+    m.textContent = (c.nick || T("anon")) + " · " + fmtWhen(c.created);
+    el.appendChild(b); el.appendChild(m); box.appendChild(el);
+  }
+}
+function updateDripBadge(){
+  const seen = LS.get("dl_seen", {});
+  let unread = 0;
+  for(const j of myDrips) if((j.last_comment || 0) > (seen["u" + j.id] || 0)) unread++;
+  const badge = $("#dripBadge");
+  if(badge){ badge.hidden = !unread; badge.textContent = String(unread); }
+  const sub = $("#dripSub");
+  if(sub) sub.textContent = myDrips.length ? STR[LANG].dripSub(myDrips.length, unread) : T("dripSubNone");
+}
+async function renderMyDrips(){
+  const box = $("#myList");
+  if(!box) return;
+  try{ myDrips = await DRIP.mine(); }catch(e){ myDrips = []; }
+  const seen = LS.get("dl_seen", {});
+  box.innerHTML = "";
+  if(!myDrips.length){
+    const p = document.createElement("p");
+    p.className = "tiny"; p.textContent = T("noDrips");
+    box.appendChild(p); updateDripBadge(); return;
+  }
+  for(const j of myDrips){
+    const target = "u" + j.id;
+    const row  = document.createElement("div"); row.className = "drow";
+    const head = document.createElement("button"); head.className = "dhead"; head.type = "button";
+    const q = document.createElement("div"); q.className = "dq"; q.textContent = j.setup;
+    const a = document.createElement("div"); a.className = "da";
+    a.textContent = (j.emoji ? j.emoji + " " : "") + j.punch;
+    const meta = document.createElement("div"); meta.className = "dmeta";
+    meta.textContent = STR[LANG].laughs(j.laughs || 0) + " · " + STR[LANG].cmCount(j.comments || 0);
+    head.appendChild(q); head.appendChild(a); head.appendChild(meta);
+    if((j.last_comment || 0) > (seen[target] || 0)){
+      const dot = document.createElement("span"); dot.className = "dot"; row.appendChild(dot);
+    }
+    const panel = document.createElement("div"); panel.className = "cmlist"; panel.hidden = true;
+    head.addEventListener("click", async ()=>{
+      panel.hidden = !panel.hidden;
+      if(panel.hidden) return;
+      panel.textContent = "…";
+      let list = [];
+      try{ list = await DRIP.comments(target); }catch(e){}
+      renderComments(panel, list);
+      const sn = LS.get("dl_seen", {});
+      sn[target] = j.last_comment || 0;
+      LS.set("dl_seen", sn);
+      const dot = row.querySelector(".dot"); if(dot) dot.remove();
+      updateDripBadge();
+    });
+    const del = document.createElement("button");
+    del.className = "dellink"; del.type = "button"; del.textContent = T("del");
+    del.addEventListener("click", async ()=>{
+      try{ await DRIP.remove(j.id); }catch(e){ dNote(String(e.message || e), true); return; }
+      await loadFeed(); await renderMyDrips();
+    });
+    row.appendChild(head); row.appendChild(panel); row.appendChild(del);
+    box.appendChild(row);
+  }
+  updateDripBadge();
+}
+function dNote(msg, warn){
+  const el = $("#dNote");
+  if(!el) return;
+  el.textContent = msg || "";
+  el.classList.toggle("warn", !!warn);
+}
+async function submitDrip(){
+  const setup = $("#dSetup").value.trim();
+  const punch = $("#dPunch").value.trim();
+  const emoji = $("#dEmoji").value.trim();
+  const nick  = $("#dNick").value.trim();
+  if(!setup || !punch){ dNote(T("needBoth"), true); return; }
+  myNick = nick; LS.set("dl_nick", nick);
+  const btn = $("#dSubmit"); btn.disabled = true;
+  try{
+    const r = await DRIP.submit({ setup, punch, emoji, nick, lang:LANG });
+    $("#dSetup").value = ""; $("#dPunch").value = ""; $("#dEmoji").value = "";
+    dNote(r.remote ? T("dripOk") : T("dripLocal"), !r.remote);
+    await loadFeed();
+    await renderMyDrips();
+  }catch(e){
+    dNote(String((e && e.message) || e), true);
+  }
+  btn.disabled = false;
+}
+
+/* ---------- 결과 화면: 나를 무너뜨린 개그 ---------- */
+function renderJokeCard(){
+  const card = $("#jokeCard");
+  if(!card) return;
+  if(!failJoke){ card.hidden = true; return; }
+  card.hidden = false;
+  $("#jkSetup").textContent = failJoke[0] || "";
+  $("#jkEmoji").textContent = failJoke[2] || "";
+  $("#jkPunch").textContent = failJoke[1] || "";
+  $("#jkBy").textContent    = failJoke[4] ? "— " + failJoke[4] : "";
+  $("#jkInput").value = "";
+  const box = $("#jkComments");
+  box.innerHTML = "";
+  DRIP.comments(failJoke[3]).then(list => renderComments(box, list)).catch(()=>{});
+}
+async function sendJokeComment(){
+  if(!failJoke) return;
+  const input = $("#jkInput");
+  const body = input.value.trim();
+  if(!body) return;
+  const btn = $("#jkSend"); btn.disabled = true;
+  try{
+    await DRIP.comment(failJoke[3], body);
+    input.value = "";
+    const list = await DRIP.comments(failJoke[3]);
+    renderComments($("#jkComments"), list);
+    setResNote(apiOn ? "cmOk" : "cmLocal");
+  }catch(e){
+    resNote.textContent = String((e && e.message) || e);
+    resNote.classList.add("warn");
+  }
+  btn.disabled = false;
+}
+
+const QUICK_EMO = ["🥫","🧂","🦍","🥩","🥛","🐦","🍑","🌀","🍞","🍓","🐔","🐙","⭐","🐜","⏳","🍩","🍺","🥶","🐮","🦁","🐰","🧁"];
+function buildEmoRow(){
+  const row = $("#emoRow");
+  if(!row || row.children.length) return;
+  for(const e of QUICK_EMO){
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "emobtn"; b.textContent = e;
+    b.addEventListener("click", ()=>{ $("#dEmoji").value = e; });
+    row.appendChild(b);
+  }
+}
+
 /* ============================================================
    11. i18n 적용 / 이벤트 배선
    ============================================================ */
@@ -1837,17 +2249,25 @@ function applyI18n(){
   document.documentElement.lang = LANG;
   document.querySelectorAll("[data-i]").forEach(el => { el.textContent = T(el.dataset.i); });
   document.querySelectorAll("[data-ih]").forEach(el => { el.innerHTML = T(el.dataset.ih); });
+  document.querySelectorAll("[data-ph]").forEach(el => { el.placeholder = T(el.dataset.ph); });
   langBtn.textContent = LANG === "ko" ? "EN" : "한국어";
   startNote.textContent = startNoteKey ? T(startNoteKey) : "";
   startNote.classList.toggle("warn", startNoteWarn);
   resNote.textContent = resNoteKey ? T(resNoteKey) : "";
   const miss = $("#vidMiss"); if(miss) miss.textContent = T("noRec");
   tierDesc();
+  updateDripBadge();
   renderDiag();
   if($("#scr-result").classList.contains("on")) renderResultTexts();
   document.title = LANG === "ko" ? "안 웃기 챌린지" : "Don't Laugh Challenge";
 }
-langBtn.addEventListener("click", ()=>{ LANG = LANG === "ko" ? "en" : "ko"; applyI18n(); });
+langBtn.addEventListener("click", async ()=>{
+  LANG = LANG === "ko" ? "en" : "ko";
+  applyI18n();
+  await loadFeed();
+  if($("#scr-drip").classList.contains("on")) await renderMyDrips();
+  else updateDripBadge();
+});
 
 function tierDesc(){
   const el = $("#tierDesc");
@@ -1861,6 +2281,18 @@ document.querySelectorAll(".tier").forEach(b=>{
   });
 });
 startBtn.addEventListener("click", start);
+$("#dripBtn").addEventListener("click", async ()=>{
+  buildEmoRow();
+  if($("#dNick")) $("#dNick").value = myNick;
+  show("scr-drip");
+  dNote("");
+  await renderMyDrips();
+});
+$("#dripBack").addEventListener("click", ()=>{ show("scr-start"); });
+$("#dSubmit").addEventListener("click", submitDrip);
+$("#jkSend").addEventListener("click", sendJokeComment);
+$("#jkInput").addEventListener("keydown", e=>{ if(e.key === "Enter") sendJokeComment(); });
+$("#dPunch").addEventListener("keydown", e=>{ if(e.key === "Enter") submitDrip(); });
 $("#shareBtn").addEventListener("click", doShare);
 $("#saveBtn").addEventListener("click", ()=>{ if(saveBlob()) setResNote("saved"); else setResNote("noRec"); });
 $("#againBtn").addEventListener("click", ()=>{ try{ resVideo.pause(); }catch(e){} start(); });
@@ -1873,6 +2305,7 @@ window.addEventListener("pagehide", ()=>{ if(phase!=="idle" && phase!=="done") s
 applyI18n();
 setStartNote("ready");
 refreshPerm();
+pingApi().then(loadFeed).then(renderMyDrips);
 ctx.fillStyle = C.bg; ctx.fillRect(0,0,W,H);
 </script>
 </body>

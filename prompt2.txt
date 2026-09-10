@@ -1,0 +1,116 @@
+단일 파일 index.html 하나만 만들어라. 다른 파일은 만들지 마라.
+빌드 스텝 없음. 바닐라 JS. Cloudflare Pages에 그대로 올릴 정적 파일이다.
+CLAUDE.md의 폴더 구조 규칙은 이 작업에 적용하지 마라. 반드시 단일 파일이다.
+
+[무엇]
+웹캠으로 웃음을 감지하는 "안 웃기 챌린지" 게임.
+버틴 시간을 재고, 무너지는 순간을 9:16 영상으로 녹화해 공유하게 한다.
+
+[화면 3개]
+1) 시작: 타이틀, 설명, 판정기준 3단(봐줌/보통/빡셈), 시작 버튼, 한/영 토글
+2) 게임: 720x1280 캔버스 하나만 표시. 카운트다운 오버레이.
+3) 결과: 기록(초), 등급 문구, 녹화 영상 재생, 공유/저장/다시/처음으로
+
+[얼굴 인식 - 정확히 이대로]
+MediaPipe Tasks Vision 0.10.14, ESM import:
+  import { FaceLandmarker, FilesetResolver } from
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+  wasm: "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+  model: "https://storage.googleapis.com/mediapipe-models/face_landmarker/
+          face_landmarker/float16/1/face_landmarker.task"
+옵션: outputFaceBlendshapes:true, runningMode:"VIDEO", numFaces:1, delegate:"GPU"
+detectForVideo는 video.currentTime이 바뀌었을 때만 호출한다.
+
+[웃음 점수 - 이 공식 그대로]
+smile = (mouthSmileLeft + mouthSmileRight)/2
+cheek = (cheekSquintLeft + cheekSquintRight)/2
+press = (mouthPressLeft + mouthPressRight)/2
+score = smile + cheek*0.55 + max(0, jawOpen-0.35)*0.5 + press*0.25
+
+[기준값 보정 - 중요]
+절대값으로 판정하면 안 된다. 사람마다 평소 입꼬리가 다르다.
+시작 3초 카운트다운 동안 score를 모아 중앙값을 base로 잡는다.
+판정: (score - base) > 민감도 가 0.11초 이상 지속되면 실패.
+민감도 값: 봐줌 0.30 / 보통 0.19 / 빡셈 0.11
+카운트다운 중 얼굴이 0.8초 이상 안 보이면 카운트다운을 리셋하고
+"얼굴이 화면에 없습니다"를 띄운다. base가 0으로 잡히면 즉시 실패해버린다.
+게임 중 얼굴이 1.3초 이상 안 보이면 "도망" 사유로 실패시킨다.
+(안 그러면 손으로 카메라 가려서 무한 우회된다)
+
+[캔버스 레이아웃 - 이 수치 그대로]
+캔버스 720x1280 (9:16). 화면에는 aspect-ratio로 축소 표시.
+  0~560   : 자극 영역
+  560~1280: 카메라 영역 (720x720 정사각, 좌우반전, cover 크롭)
+타이머: 카메라 영역 좌상단 (26, 578), 76px, 검은 외곽선.
+  가운데 두면 얼굴을 가린다.
+하단 16px: 긴장도 바. (score-base)/민감도 비율. 0.7 넘으면 빨강.
+우하단: 워터마크 작게.
+
+[자극 12종 - 캔버스에 직접 그린다]
+전부 이모지 + 도형으로 canvas에 fillText/그리기. 외부 이미지 금지(저작권).
+각 4~6초, 랜덤 순서, 다 돌면 다시 셔플.
+1 흔들리는 이모지 (좌우진동+스케일 펄스)
+2 작았다가 화면 꽉 채우며 돌진 + 흰 플래시
+3 거대한 눈알 두 개가 천천히 시선 이동, 가끔 깜빡임 (도형으로 그림)
+4 오리들이 위아래로 통통 튀며 가로질러 감
+5 점점 빨리 회전하다 화면 밖으로 날아감
+6 이모지 26개가 비처럼 쏟아짐
+7 가장자리에서 아주 천천히 기어오다 마지막에 확 튀어나옴
+8 세로로 극단적으로 늘어났다 가로로 납작해짐
+9 배경 빨강/노랑 점멸 + 사이렌 이모지 진동
+10 라이브 웹캠을 자극 영역에 가로 슬라이스 26개로 물결처럼 왜곡해서 그림
+11 라이브 웹캠 3배 확대 (자기 코가 화면 가득)
+12 이모지가 아주 작아졌다가 갑자기 폭발하듯 커짐
+10번 11번이 제일 효과 좋다. 반드시 넣어라.
+
+[효과음]
+Web Audio API로 실시간 생성. 음원 파일 쓰지 마라.
+squeak/boing/honk/boom/slide 5종. oscillator + noise buffer로 만든다.
+AudioContext에 MediaStreamDestination을 만들어
+효과음과 마이크를 여기로 합치고, 이걸 녹화 오디오 트랙으로 쓴다.
+
+[녹화]
+stage.captureStream(30)의 비디오 트랙 + 위 오디오 트랙으로 MediaStream 구성.
+MediaRecorder mimeType 우선순위(isTypeSupported로 확인):
+  'video/mp4;codecs="avc1.42E01E,mp4a.40.2"' → 'video/mp4'
+  → 'video/webm;codecs=vp9,opus' → 'video/webm'
+인스타는 webm을 안 받으므로 mp4가 먼저다.
+녹화는 카운트다운이 끝나는 순간 시작한다.
+
+[실패 연출 - 이게 공유되는 부분이다]
+실패 순간 캔버스를 통째로 스냅샷 뜬다.
+1.7초 동안:
+- 스냅샷의 카메라 영역(0,560,720,720)만 잘라 9:16 커버 크롭으로 전체 화면에 채운다
+  sh = 720/z, sw = sh*(720/1280), sx=(720-sw)/2, sy=560+(720-sh)/2
+  z는 1에서 1.17까지 천천히 증가 (푸시인)
+- 빨간 플래시가 빠르게 사라짐
+- 하단 400px에 그라디언트 슬랩, 그 위에 "실패" + 기록
+1.7초 뒤 녹화 정지, 카메라 정지, 결과 화면.
+
+[공유]
+navigator.canShare({files})로 확인 후 navigator.share.
+안 되면 a[download]로 저장. 파일명 dontlaugh_12.3s.mp4
+
+[권한]
+getUserMedia는 반드시 시작 버튼 클릭 이후에 호출한다.
+페이지 로드 시 호출하면 대부분 거절한다.
+video:{facingMode:"user"}, audio:true
+거절 시(NotAllowedError) 시작 화면으로 돌아가 안내 문구를 띄운다.
+
+[디자인]
+--deep #0B1F1D / --panel #12302C / --line #1E4740
+--amber #FFB020 / --red #FF3B2F / --cream #F5EEDD / --muted #7A9490
+폰트: Black Han Sans(제목/숫자) + Noto Sans KR(본문), Google Fonts.
+캔버스에 텍스트 그리기 전에 document.fonts.ready를 await 해야
+웹폰트가 적용된다. 안 하면 기본 폰트로 그려진다.
+배경은 딥그린. 캔버스가 화면보다 세로로 짧으므로 남는 위아래는
+검정이 아니라 딥그린으로 채워 의도된 것처럼 보이게 한다.
+
+[i18n]
+한국어/영어. navigator.language로 자동 선택, 버튼으로 토글.
+문자열은 STR 객체 하나에 모은다.
+
+[모바일]
+100dvh 사용. viewport-fit=cover. safe-area-inset 반영.
+video 태그는 playsinline, muted 필수(iOS).
+

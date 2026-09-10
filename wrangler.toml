@@ -1,0 +1,9 @@
+name = "gitree"
+compatibility_date = "2024-11-01"
+pages_build_output_dir = "."
+
+# npx wrangler d1 create dontlaugh 를 실행하면 나오는 database_id 를 아래에 붙여넣으세요.
+[[d1_databases]]
+binding       = "DB"
+database_name = "dontlaugh"
+database_id   = "PASTE_YOUR_DATABASE_ID_HERE"
