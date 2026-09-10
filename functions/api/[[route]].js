@@ -1,4 +1,4 @@
-/* Cloudflare Pages Functions — 안 웃기 챌린지 드립 API
+/* Cloudflare Pages Functions — DON'T SMILE 드립 API
    바인딩: D1 데이터베이스를 DB 라는 이름으로 wrangler.toml 에 연결한다. */
 
 const HEAD = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };

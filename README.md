@@ -1,6 +1,6 @@
-# 안 웃기 챌린지
+# DON'T SMILE
 
-웹캠으로 웃음을 감지하는 "안 웃기 챌린지". 버틴 시간을 재고, 무너지는 순간을
+웹캠이 웃음을 감지하는 "DON'T SMILE". 버틴 시간을 재고, 무너지는 순간을
 9:16 영상으로 녹화해 공유합니다. 얼굴 인식은 전부 브라우저 안에서 돌고,
 영상은 어디로도 전송되지 않습니다.
 
@@ -49,7 +49,7 @@ npx wrangler d1 execute dontlaugh --remote \
 시작 화면 맨 아래에 `b9 · https · secure · top · gum:y · rec:y · drip:server` 같은
 한 줄이 있습니다.
 
-- `b9` — 배포된 빌드
+- `c1` — 배포된 빌드
 - `INSECURE` / `gum:N` — http 주소라 카메라를 못 씁니다
 - `IFRAME` — 다른 페이지에 삽입돼 카메라가 막힙니다
 - `cam:denied` — 브라우저에 차단으로 저장된 상태

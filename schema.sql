@@ -1,4 +1,4 @@
--- 안 웃기 챌린지 · D1 스키마
+-- DON'T SMILE · D1 스키마
 -- 적용:  npx wrangler d1 execute dontlaugh --remote --file=schema.sql
 
 CREATE TABLE IF NOT EXISTS jokes (
