@@ -639,20 +639,7 @@ function drawCam(c, dx, dy, dw, dh, zoom, beauty){
 const EMO_FACE = ["🐰","🐣","🐻","🐨","🐼","🦊","🐸","🐧","🦄","🌸","🍓","🧁","🍑","🐥","🦋","☁️","🫧","🍀","🌷","🐹","🐤","🍡","🎀","🌈","🍒","🪄"];
 const EMO_RAIN = ["🌸","🍓","🧁","🫧","🎀","🍑","🦋","🌷","🍀","🐣","☁️","🍒","🌟","🐰","🍰","🧸","🪄","🍬","🌼","🐥","🍧","🩰","🍎","🐇","🫐","🎈"];
 
-/* ---- 짧은 자막 (자극별) ---- */
-const CAPS = {
-  ko:[["두둥","등장","철컹철컹"], ["이거 실화냐","기습","!!!"], ["＜의심＞","동공지진","뚫어져라"],
-      ["단체 등장","우르르","삐약삐약"], ["안녕히 계세요","탈출각","슝—"], ["물량 공세","우르르 쾅쾅","폭격"],
-      ["스윽…","슬금슬금","뒤에 뭐 있음"], ["쭈욱","납작","말랑말랑"], ["긴급 속보","비상","삐용삐용"],
-      ["신호 불량","영혼 이탈","와르르"], ["여기 주목","표정 보소","클로즈업"], ["그만 알아보자","펑","레전드"]],
-  en:[["OH NO","HERE WE GO","BRUH"], ["NO WAY","AMBUSH","!!!"], ["SUS","STARING","BLINK TWICE"],
-      ["THE SQUAD","STAMPEDE","QUACK"], ["I'M OUT","YEET","BYE"], ["INCOMING","IT'S RAINING","BOMBARDMENT"],
-      ["SNEAKING…","BEHIND YOU","SLOWLY…"], ["STRETCH","SQUISH","BOING"], ["BREAKING NEWS","EMERGENCY","WEE WOO"],
-      ["BAD SIGNAL","SOUL LEAVING","GLITCH"], ["LOOK HERE","THE FACE","EXTREME CLOSE-UP"], ["NOT THE BEES","BOOM","LEGENDARY"]]
-};
-const capFor = i => pick((CAPS[LANG] || CAPS.ko)[i] || CAPS.ko[0]);
-
-/* ---- 재밌는 얘기 (밑밥 → 펀치라인) ---- */
+/* ---- 썰렁개그 (밑밥 → 펀치라인 → 이모지) ---- */
 const JOKES = {
   ko:[
     ["세상에서 가장 억울한 도형은?","원통","🥫"],
@@ -903,18 +890,14 @@ function capSub(c, s, y){
   c.restore();
 }
 /* 얘기가 걸린 자극이면 짧은 자막 자리에 밑밥 → 펀치라인을 대신 띄운다 */
-function stimCap(t, fallback, y, size, big){
-  if(joke){
-    if(t < jokePunch){ capSub(ctx, joke[0], y); }
-    else{
-      const age = t - jokePunch;
-      const pop = 1 + Math.max(0, 1-age*5)*0.42;
-      if(joke[2]) emo(ctx, joke[2], 360, y-82, 66*pop, Math.sin(age*8)*0.07);
-      capBig(ctx, joke[1], 360, y, 72*pop, Math.sin(age*15)*0.022*Math.max(0,1-age*2.2), true);
-    }
-    return;
-  }
-  big ? capBig(ctx, fallback, 360, y, size, 0, false) : capSub(ctx, fallback, y);
+/* 자극마다 썰렁개그 한 편: 밑밥이 깔리고 펀치라인이 이모지와 함께 튀어나온다 */
+function stimCap(t, y){
+  if(!joke) return;
+  if(t < jokePunch){ capSub(ctx, joke[0], y); return; }
+  const age = t - jokePunch;
+  const pop = 1 + Math.max(0, 1-age*5)*0.42;
+  if(joke[2]) emo(ctx, joke[2], 360, y-82, 66*pop, Math.sin(age*8)*0.07);
+  capBig(ctx, joke[1], 360, y, 72*pop, Math.sin(age*15)*0.022*Math.max(0,1-age*2.2), true);
 }
 function redCircle(c, x, y, rx, ry, t){
   c.save(); c.strokeStyle = "#E0697A"; c.lineWidth = 12; c.lineCap = "round";
@@ -964,7 +947,7 @@ const SR = { w:W, h:SR_H };
 
 /* 1. 흔들리는 동물 */
 const st1 = {
-  init(){ ss.s = pickSubject(); ss.cap = capFor(0); },
+  init(){ ss.s = pickSubject(); },
   draw(t){
     ctx.fillStyle = C.panel; ctx.fillRect(0,0,SR.w,SR.h);
     const g = ctx.createRadialGradient(360,240,20,360,240,340);
@@ -972,12 +955,12 @@ const st1 = {
     ctx.fillStyle = g; ctx.fillRect(0,0,SR.w,SR.h);
     const x = 360 + Math.sin(t*17.5)*78, sc = 1 + Math.sin(t*9.3)*0.14;
     drawSubject(ctx, ss.s, x, 236, 290, Math.sin(t*13)*0.16, sc, sc);
-    stimCap(t, ss.cap, 470, 82, true);
+    stimCap(t, 470);
   }
 };
 /* 2. 작았다가 화면 꽉 채우며 돌진 + 흰 플래시 */
 const st2 = {
-  init(){ ss.s = pickSubject(); ss.k = -1; ss.cap = capFor(1); },
+  init(){ ss.s = pickSubject(); ss.k = -1; },
   draw(t){
     ctx.fillStyle = "#FAF3EF"; ctx.fillRect(0,0,SR.w,SR.h);
     const per = 1.55, p = (t%per)/per, k = Math.floor(t/per);
@@ -994,12 +977,12 @@ const st2 = {
       bloom(ctx, 1-q);
       ctx.fillStyle = "rgba(255,255,255,"+(q*0.95)+")"; ctx.fillRect(0,0,SR.w,SR.h);
     }else if(p < 0.5) ss.hit = false;
-    stimCap(t, ss.cap, 476, 84, true);
+    stimCap(t, 476);
   }
 };
 /* 3. 거대한 눈알 두 개 */
 const st3 = {
-  init(){ ss.gx=0; ss.gy=0; ss.tx=0; ss.ty=0; ss.next=0; ss.blink=0; ss.nb=1.4; ss.cap=capFor(2); },
+  init(){ ss.gx=0; ss.gy=0; ss.tx=0; ss.ty=0; ss.next=0; ss.blink=0; ss.nb=1.4; },
   draw(t,dt){
     ctx.fillStyle = "#F5EEE9"; ctx.fillRect(0,0,SR.w,SR.h);
     if(t > ss.next){ ss.next = t+rnd(0.7,1.5); ss.tx = rnd(-1,1); ss.ty = rnd(-.8,.8); }
@@ -1026,7 +1009,7 @@ const st3 = {
       ctx.restore();
     };
     eye(190); eye(530);
-    stimCap(t, ss.cap, 476, 80, false);
+    stimCap(t, 476);
   }
 };
 /* 4. 동물들이 통통 튀며 가로질러 감 */
@@ -1036,7 +1019,7 @@ const st4 = {
       x:rnd(-260,760), sp:rnd(120,235)*(Math.random()<.5?-1:1),
       ph:rnd(0,6.3), sz:rnd(100,150), s:pickSubject()
     }));
-    ss.cool = 0; ss.cap = capFor(3);
+    ss.cool = 0;
   },
   draw(t,dt){
     ctx.fillStyle = "#EFF4EE"; ctx.fillRect(0,0,SR.w,SR.h);
@@ -1054,12 +1037,12 @@ const st4 = {
       ctx.beginPath(); ctx.ellipse(d.x, 406, d.sz*0.34*(1.1-hop*0.5), 12, 0,0,7); ctx.fill(); ctx.restore();
       drawSubject(ctx, d.s, d.x, y, d.sz, Math.sin(t*6+d.ph)*0.18, (d.sp<0?-1:1)/sq, sq);
     }
-    stimCap(t, ss.cap, 486, 78, false);
+    stimCap(t, 486);
   }
 };
 /* 5. 점점 빨리 회전하다 화면 밖으로 날아감 */
 const st5 = {
-  init(){ ss.s = pickSubject(); ss.k = -1; ss.cap = capFor(4); },
+  init(){ ss.s = pickSubject(); ss.k = -1; },
   draw(t){
     ctx.fillStyle = "#FAF1F2"; ctx.fillRect(0,0,SR.w,SR.h);
     const per = 3.4, p = (t%per)/per, k = Math.floor(t/per);
@@ -1073,7 +1056,7 @@ const st5 = {
     }
     for(let i=1;i<=3;i++) drawSubject(ctx, ss.s, 360, 240, 240, spin-i*0.35, 1,1, 0.1);
     drawSubject(ctx, ss.s, x, y, 240, spin, s, s);
-    stimCap(t, ss.cap, 476, 76, true);
+    stimCap(t, 476);
   }
 };
 /* 6. 26개가 비처럼 쏟아짐 */
@@ -1084,7 +1067,7 @@ const st6 = {
       x:rnd(0,SR.w), y:rnd(-620,SR.h), v:rnd(230,520),
       s:rnd(58,118), r:rnd(0,6.3), vr:rnd(-3.4,3.4), sb:one()
     }));
-    ss.one = one; ss.cap = capFor(5);
+    ss.one = one;
   },
   draw(t,dt){
     ctx.fillStyle = "#F7F0F4"; ctx.fillRect(0,0,SR.w,SR.h);
@@ -1093,12 +1076,12 @@ const st6 = {
       if(p.y > SR.h+100){ p.y = -100; p.x = rnd(0,SR.w); p.v = rnd(230,520); p.sb = ss.one(); }
       drawSubject(ctx, p.sb, p.x, p.y, p.s, p.r);
     }
-    stimCap(t, ss.cap, 486, 78, false);
+    stimCap(t, 486);
   }
 };
 /* 7. 가장자리에서 아주 천천히 기어오다 마지막에 확 튀어나옴 */
 const st7 = {
-  init(){ ss.s = pickSubject(); ss.side = (Math.random()*4)|0; ss.k = -1; ss.cap = capFor(6); },
+  init(){ ss.s = pickSubject(); ss.side = (Math.random()*4)|0; ss.k = -1; },
   draw(t){
     ctx.fillStyle = "#F6EFE9"; ctx.fillRect(0,0,SR.w,SR.h);
     const per = 4.6, p = (t%per)/per, k = Math.floor(t/per);
@@ -1118,12 +1101,12 @@ const st7 = {
       ctx.fillStyle = "rgba(224,105,122,"+(0.22*(1-q))+")"; ctx.fillRect(0,0,SR.w,SR.h);
     }
     drawSubject(ctx, ss.s, x, y, 220, Math.sin(t*2)*0.1, s, s);
-    stimCap(t, ss.cap, 486, 84, false);
+    stimCap(t, 486);
   }
 };
 /* 8. 세로로 극단적으로 늘어났다 가로로 납작해짐 */
 const st8 = {
-  init(){ ss.s = pickSubject(); ss.last = -1; ss.cap = capFor(7); },
+  init(){ ss.s = pickSubject(); ss.last = -1; },
   draw(t){
     ctx.fillStyle = "#EFF3F5"; ctx.fillRect(0,0,SR.w,SR.h);
     const per = 1.25, p = (t%per)/per;
@@ -1133,12 +1116,12 @@ const st8 = {
     const kk = Math.floor(t/(per/2));
     if(kk !== ss.last){ ss.last = kk; sfx("boing",0.6); }
     drawSubject(ctx, ss.s, 360, 236, 200, 0, sx/Math.sqrt(sy), sy/Math.sqrt(sx));
-    stimCap(t, ss.cap, 486, 80, false);
+    stimCap(t, 486);
   }
 };
 /* 9. 배경 빨강/노랑 점멸 + 긴급속보 */
 const st9 = {
-  init(){ ss.last = -1; ss.cap = capFor(8); ss.s = pickSubject(); },
+  init(){ ss.last = -1; ss.s = pickSubject(); },
   draw(t){
     const f = Math.floor(t*9)%2;
     ctx.fillStyle = f ? "#E0697A" : "#F6D3A8";
@@ -1154,14 +1137,15 @@ const st9 = {
     ctx.fillStyle = "#2E2724"; ctx.fillRect(0, 388, SR.w, 66);
     ctx.fillStyle = "#E0697A"; ctx.fillRect(0, 388, 152, 66);
     txt(ctx, LANG==="ko" ? "속보" : "LIVE", 76, 421, '36px '+HEAD, "#fff");
-    const bar = joke ? (Math.floor(t*40)%2 ? "◆" : "◇") : ss.cap;
-    txt(ctx, bar, 172, 421, '38px '+HEAD, "#FFE24A", "left");
-    stimCap(t, ss.cap, 500, 76, false);
+    const dots = "◆◇◆◇◆◇◆◇◆◇◆◇";
+    const off = Math.floor(t*4) % 2;
+    txt(ctx, dots.slice(off, off+11), 172, 421, '30px '+HEAD, "#FFE9DC", "left");
+    stimCap(t, 500);
   }
 };
 /* 10. 라이브 웹캠 가로 슬라이스 26개 물결 왜곡 */
 const st10 = {
-  init(){ ss.amp = 0; ss.cap = capFor(9); },
+  init(){ ss.amp = 0; },
   draw(t,dt){
     ctx.fillStyle = "#FAF3EF"; ctx.fillRect(0,0,SR.w,SR.h);
     const r = videoCoverRect(SR.w, SR.h, 1);
@@ -1178,12 +1162,12 @@ const st10 = {
       ctx.restore();
       ctx.fillStyle = "rgba(147,172,152,.14)"; ctx.fillRect(0,0,SR.w,SR.h);
     }
-    stimCap(t, ss.cap, 486, 78, false);
+    stimCap(t, 486);
   }
 };
 /* 11. 라이브 웹캠 3배 확대 + 빨간 동그라미/화살표 */
 const st11 = {
-  init(){ ss.z = 1.6; ss.cap = capFor(10); ss.mos = 0; ss.nm = rnd(1.6,2.6); },
+  init(){ ss.z = 1.6; ss.mos = 0; ss.nm = rnd(1.6,2.6); },
   draw(t,dt){
     ctx.fillStyle = "#FAF3EF"; ctx.fillRect(0,0,SR.w,SR.h);
     ss.z = lerp(ss.z, 3, Math.min(1,dt*1.5));
@@ -1200,12 +1184,12 @@ const st11 = {
     ctx.fillStyle = g; ctx.fillRect(0,0,SR.w,SR.h);
     redCircle(ctx, 360, 216, 176, 144, t);
     redArrow(ctx, 646, 56, 512, 152);
-    stimCap(t, ss.cap, 480, 82, true);
+    stimCap(t, 480);
   }
 };
 /* 12. 아주 작아졌다가 폭발하듯 커짐 */
 const st12 = {
-  init(){ ss.s = pickSubject(); ss.k = -1; ss.cap = capFor(11); },
+  init(){ ss.s = pickSubject(); ss.k = -1; },
   draw(t){
     ctx.fillStyle = "#FBF3EF"; ctx.fillRect(0,0,SR.w,SR.h);
     const per = 1.9, p = (t%per)/per, k = Math.floor(t/per);
@@ -1224,7 +1208,7 @@ const st12 = {
     }
     drawSubject(ctx, ss.s, 360, 240, 210, 0, s, s);
     if(p > 0.72) bloom(ctx, (p-0.72)/0.28);
-    stimCap(t, ss.cap, 480, 82, true);
+    stimCap(t, 480);
   }
 };
 
@@ -1238,8 +1222,7 @@ function nextStim(now){
   stimStart = now;
   stimDur = rnd(4000,6000);
   ss = {};
-  /* 절반 정도는 짧은 자막 대신 얘기 한 편을 건다 */
-  joke = Math.random() < 0.55 ? nextJoke() : null;
+  joke = nextJoke();                       // 자극마다 썰렁개그 한 편
   jokePunch = clamp(stimDur/1000*0.5, 1.8, 3.0);
   jokeHit = false;
   if(curStim.init) curStim.init();
@@ -1586,7 +1569,7 @@ const startBtn=$("#startBtn"), startNote=$("#startNote"), resNote=$("#resNote"),
 let startNoteKey = "ready", startNoteWarn = false, resNoteKey = "";
 let micDenied = false, permState = "", lastErr = "";
 
-const BUILD = "b7";     // 어떤 빌드가 떠 있는지 눈으로 확인하기 위한 스탬프
+const BUILD = "b8";     // 어떤 빌드가 떠 있는지 눈으로 확인하기 위한 스탬프
 function inFrame(){ try{ return window.self !== window.top; }catch(e){ return true; } }
 function renderDiag(){
   const d = $("#diag"); if(!d) return;
